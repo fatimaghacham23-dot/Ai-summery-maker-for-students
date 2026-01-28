@@ -19,7 +19,7 @@ const limiter = rateLimit({
   },
 });
 
-const allowedLengths = ["short", "medium", "detailed"];
+const allowedLengths = ["short", "medium", "detailed", "unlimited"];
 const allowedFormats = ["paragraph", "bullets"];
 
 const validateRequest = (req, res, next) => {
@@ -49,7 +49,7 @@ const validateRequest = (req, res, next) => {
   if (!allowedLengths.includes(length)) {
     return next(
       new AppError(
-        "Length must be one of: short, medium, detailed.",
+        "Length must be one of: short, medium, detailed, unlimited.",
         400,
         "VALIDATION_ERROR"
       )

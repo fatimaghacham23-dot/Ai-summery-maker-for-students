@@ -14,6 +14,8 @@ const pickSentenceCount = (length) => {
       return 4;
     case "detailed":
       return 6;
+    case "unlimited":
+      return Number.POSITIVE_INFINITY;
     default:
       return 3;
   }
@@ -21,7 +23,12 @@ const pickSentenceCount = (length) => {
 
 const createSummaryText = ({ text, length }) => {
   const sentences = splitSentences(text);
+  if (length === "unlimited") {
+    return sentences.join(" ");
+  }
+
   const sentenceCount = Math.min(sentences.length, pickSentenceCount(length));
+ 
   if (sentenceCount === 0) {
     return text.slice(0, 200);
   }

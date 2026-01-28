@@ -5,6 +5,7 @@ const getPrompt = ({ text, length, format }) => {
     short: "2-3 sentences",
     medium: "4-6 sentences",
     detailed: "7-10 sentences",
+    unlimited: "As long as needed, with no length limit",
   };
 
   const formatInstruction =
