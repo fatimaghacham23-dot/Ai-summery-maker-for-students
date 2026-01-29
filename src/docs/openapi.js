@@ -212,6 +212,10 @@ const openapiSpec = {
           answerKeyBool: { type: "boolean" },
           answerKeyText: { type: "array", items: { type: "string" } },
           answerKeyBlank: { type: "string" },
+          classification: {
+            type: "string",
+            enum: ["Definition", "Concept", "Fact", "Application"],
+          },
           explanation: { type: "string" },
           points: { type: "number" },
         },

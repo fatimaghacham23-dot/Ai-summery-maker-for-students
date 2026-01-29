@@ -503,6 +503,18 @@ select:focus{
   font-weight: 700;
 }
 
+.question-meta{
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.result-meta{
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .exam-questions textarea,
 .exam-questions input[type="text"]{
   border: 1px solid var(--border);

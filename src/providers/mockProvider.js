@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { createSummaryText, formatSummary } = require("../utils/summary");
+const { createSummaryText, formatSummary } = require("./utils/summary");
 const { POINTS_BY_TYPE } = require("../utils/exams");
 
 const normalizeWords = (text) => {

@@ -92,7 +92,12 @@ const renderExamMeta = () => {
       <div>
         <strong>${currentExam.title}</strong>
         <p class="subtext">Created ${new Date(currentExam.createdAt).toLocaleString()}</p>
-      </div>
+        ${
+          currentExam.blueprint?.length
+            ? `<p class="subtext">Blueprint: ${currentExam.blueprint.join(", ")}</p>`
+            : ""
+        }
+        </div>
       <div class="exam-meta-stats">
         <span>${currentExam.config.difficulty.toUpperCase()}</span>
         <span>${currentExam.config.questionCount} questions</span>
@@ -138,6 +143,9 @@ const renderExamQuestions = () => {
           <div class="exam-question">
             ${questionHeader}
             <p>${question.prompt}</p>
+            <p class="question-meta">Classification: ${
+              question.classification || "Unspecified"
+            }</p>
             <div class="choice-list">
               <label class="choice-option">
                 <input type="radio" name="${question.id}" value="true" />
@@ -177,22 +185,40 @@ const renderResults = (payload) => {
     resultsPanel.innerHTML = `<p class="placeholder">Submit an attempt to see results.</p>`;
     return;
   }
+  const questionMap = new Map(
+    (currentExam?.questions || []).map((question) => [question.id, question])
+  );
   const summary = `
     <div class="results-summary">
       <h3>Score: ${payload.score.earned} / ${payload.score.total} (${payload.score.percent}%)</h3>
     </div>
   `;
   const list = payload.results
-    .map(
-      (result, index) => `
+    .map((result, index) => {
+      const question = questionMap.get(result.questionId) || result;
+      const classification =
+        question.questionType === "trueFalse" || question.type === "trueFalse"
+          ? question.classification
+          : null;
+      const explanation =
+        question.questionType === "trueFalse" || question.type === "trueFalse"
+          ? question.explanation
+          : null;
+      return `
         <div class="result-item ${result.correct ? "correct" : "incorrect"}">
           <strong>Q${index + 1}</strong>
           <span>${result.correct ? "Correct" : "Incorrect"}</span>
           <span>${result.earnedPoints}/${result.maxPoints} pts</span>
+          ${
+            classification
+              ? `<p class="result-meta">Classification: ${classification}</p>`
+              : ""
+          }
+          ${explanation ? `<p class="result-meta">${explanation}</p>` : ""}
           <p>${result.feedback}</p>
         </div>
-      `
-    )
+      `;
+    })
     .join("");
   resultsPanel.innerHTML = `${summary}<div class="results-list">${list}</div>`;
 };
