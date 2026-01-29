@@ -1,8 +1,9 @@
 class AppError extends Error {
-  constructor(message, statusCode, code) {
+  constructor(message, statusCode, code, details) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -23,12 +24,18 @@ const errorHandler = (err, req, res, next) => {
     console.error(err);
   }
 
-  res.status(statusCode).json({
+  const response = {
     error: {
       code,
       message: err.message || "Unexpected error",
     },
-  });
+  };
+
+  if (err.details) {
+    response.error.details = err.details;
+  }
+
+  res.status(statusCode).json(response);
 };
 
 module.exports = {

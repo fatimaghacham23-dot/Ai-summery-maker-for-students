@@ -14,6 +14,17 @@
     grid-template-columns: 1fr;
   }
 
+  .exam-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .exam-sidebar{
+    position: static;
+  }
+
+  .type-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .about-grid{
     grid-template-columns: 1fr;
   }

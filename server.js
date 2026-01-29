@@ -7,6 +7,7 @@ const swaggerUi = require("swagger-ui-express");
 const { errorHandler, notFoundHandler } = require("./src/middleware/errorHandler");
 const healthRouter = require("./src/routes/health");
 const summarizeRouter = require("./src/routes/summarize");
+const examsRouter = require("./src/routes/exams");
 const openapiSpec = require("./src/docs/openapi");
 
 const app = express();
@@ -14,7 +15,14 @@ const app = express();
 /**
  * CORS configuration
  */
-const allowedOrigins = ["http://localhost:5500", "http://127.0.0.1:5500"];
+const allowedOrigins = [
+  "http://localhost:5000",
+  "http://127.0.0.1:5000",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+  "http://localhost:5501",
+  "http://127.0.0.1:5501"
+];
 
 app.use(
   cors({
@@ -38,6 +46,7 @@ app.use(morgan("dev"));
  */
 app.use("/health", healthRouter);
 app.use("/api", summarizeRouter);
+app.use("/api", examsRouter);
 
 app.get("/openapi.json", (req, res) => {
   res.json(openapiSpec);

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exam Maker | StudySummarize</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <img src="assets/icons/logo.svg" alt="StudySummarize Logo" class="logo-img" />
+      <span class="logo-text">StudySummarize</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="exam.html" class="active">Exam Maker</a>
+      <a href="about.html">About</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero exam-hero">
+      <div class="hero-content">
+        <h1>AI Exam Maker</h1>
+        <p>Create practice exams from your study notes, answer them, and get instant feedback.</p>
+        <div class="hero-badges">
+          <span class="chip">Connected API</span>
+          <span class="chip">Configurable difficulty</span>
+          <span class="chip">History tracking</span>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <img src="assets/images/hero-illustration.svg" alt="Study illustration" />
+      </div>
+    </section>
+
+    <main class="exam-layout">
+      <section class="exam-main">
+        <section class="card">
+          <div class="card-top">
+            <div>
+              <h2>Study Text</h2>
+              <p class="subtext">Paste study notes to generate an exam.</p>
+            </div>
+            <div class="count-badge" id="examCountBadge">0 words • 0 chars</div>
+          </div>
+
+          <textarea
+            id="examText"
+            placeholder="Paste your study notes here..."
+            aria-label="Study text"
+          ></textarea>
+
+          <div class="config-grid">
+            <div class="control">
+              <label for="difficultySelect">Difficulty</label>
+              <select id="difficultySelect">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="questionCount">Question count (5-30)</label>
+              <input id="questionCount" type="number" min="5" max="30" value="10" />
+            </div>
+          </div>
+
+          <div class="type-grid">
+            <div class="control">
+              <label for="mcqCount">MCQ</label>
+              <input id="mcqCount" type="number" min="0" value="4" />
+            </div>
+            <div class="control">
+              <label for="tfCount">True/False</label>
+              <input id="tfCount" type="number" min="0" value="2" />
+            </div>
+            <div class="control">
+              <label for="shortCount">Short Answer</label>
+              <input id="shortCount" type="number" min="0" value="2" />
+            </div>
+            <div class="control">
+              <label for="fillCount">Fill Blank</label>
+              <input id="fillCount" type="number" min="0" value="2" />
+            </div>
+          </div>
+
+          <div class="type-status" id="typeStatus">Types total: 10 / 10</div>
+
+          <div class="input-actions">
+            <button class="primary-btn" id="generateExamBtn" type="button">Generate Exam</button>
+            <button class="ghost-btn" id="clearExamBtn" type="button">Clear</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-top">
+            <div>
+              <h2>Exam Viewer</h2>
+              <p class="subtext">Answer questions and submit when ready.</p>
+            </div>
+            <span class="status-pill" id="examStatus">Idle</span>
+          </div>
+
+          <div id="examMeta" class="exam-meta">
+            <p class="placeholder">Generate or select an exam to begin.</p>
+          </div>
+
+          <form id="examForm" class="exam-questions"></form>
+
+          <div class="exam-actions">
+            <button class="secondary-btn" id="submitExamBtn" type="button">Submit Answers</button>
+            <button class="ghost-btn" id="exportJsonBtn" type="button">Export JSON</button>
+            <button class="ghost-btn" id="exportHtmlBtn" type="button">Export HTML</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-top">
+            <div>
+              <h2>Results</h2>
+              <p class="subtext">Review your score and feedback.</p>
+            </div>
+          </div>
+          <div id="resultsPanel" class="results-panel">
+            <p class="placeholder">Submit an attempt to see results.</p>
+          </div>
+        </section>
+      </section>
+
+      <aside class="card exam-sidebar">
+        <div class="card-top">
+          <div>
+            <h2>History</h2>
+            <p class="subtext">Generated exams & attempts.</p>
+          </div>
+        </div>
+        <div class="history-section">
+          <h3>Exams</h3>
+          <ul id="examsList" class="history-list"></ul>
+        </div>
+        <div class="history-section">
+          <h3>Attempts</h3>
+          <ul id="attemptsList" class="history-list"></ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <p>© 2026 StudySummarize — Exam Maker</p>
+    </div>
+  </footer>
+
+  <script src="js/exam.js"></script>
+</body>
+</html>
