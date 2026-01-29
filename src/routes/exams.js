@@ -10,7 +10,7 @@ const {
   createExamRecord,
   gradeSubmission,
   renderExamHtml,
-} = require("../utils/exam");
+} = require("../utils/exams");
 
 const router = express.Router();
 

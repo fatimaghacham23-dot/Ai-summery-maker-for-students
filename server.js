@@ -1,53 +1,89 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 
-const { errorHandler, notFoundHandler } = require("./src/middleware/errorHandler");
+const {
+  errorHandler,
+  notFoundHandler,
+} = require("./src/middleware/errorHandler");
+
 const healthRouter = require("./src/routes/health");
 const summarizeRouter = require("./src/routes/summarize");
 const examsRouter = require("./src/routes/exams");
-const openapiSpec = require("./src/docs/openapi");
+
+// ⚠️ This should be an OpenAPI SPEC, not a provider.
+// If openaiProvider exports a spec, this is fine.
+// Otherwise, later you may want a separate openapi.js file.
+const openapiSpec = require("./src/providers/openaiProvider");
 
 const app = express();
 
 /**
- * CORS configuration
+ * =========================
+ * CORS CONFIGURATION (FIXED)
+ * =========================
  */
 const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+
   "http://localhost:5000",
   "http://127.0.0.1:5000",
+
   "http://localhost:5500",
   "http://127.0.0.1:5500",
+
   "http://localhost:5501",
-  "http://127.0.0.1:5501"
+  "http://127.0.0.1:5501",
+
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
 ];
 
 app.use(
   cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+    origin: (origin, callback) => {
+      // Allow server-to-server, curl, Postman, etc.
+      if (!origin) {
         return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
+    credentials: true,
   })
 );
 
 /**
- * Global middleware
+ * =================
+ * GLOBAL MIDDLEWARE
+ * =================
  */
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
 /**
- * Routes
+ * =======
+ * ROUTES
+ * =======
  */
 app.use("/health", healthRouter);
 app.use("/api", summarizeRouter);
 app.use("/api", examsRouter);
 
+/**
+ * ============
+ * SWAGGER / API
+ * ============
+ */
 app.get("/openapi.json", (req, res) => {
   res.json(openapiSpec);
 });
@@ -55,13 +91,17 @@ app.get("/openapi.json", (req, res) => {
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 /**
- * Error handling
+ * ==================
+ * ERROR HANDLING
+ * ==================
  */
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 /**
- * Start server
+ * ==============
+ * START SERVER
+ * ==============
  */
 const PORT = process.env.PORT || 3000;
 
