@@ -1,5 +1,5 @@
 const { AppError } = require("../middleware/errorHandler");
-
+const { debugFetch } = require("../debug/debugFetch");
 const getPrompt = ({ text, length, format }) => {
   const lengthInstructions = {
     short: "2-3 sentences",
@@ -34,7 +34,7 @@ const summarize = async ({ text, length, format }) => {
     );
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await debugFetch("summary_generate", "https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -158,7 +158,7 @@ module.exports = {
       text,
     ].join("\n");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await debugFetch("exam_generate", "https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

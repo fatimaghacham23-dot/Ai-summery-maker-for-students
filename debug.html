@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debug | StudySummarize</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <img src="assets/icons/logo.svg" alt="StudySummarize Logo" class="logo-img" />
+      <span class="logo-text">StudySummarize</span>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="exam.html">Exam Maker</a>
+      <a href="about.html">About</a>
+      <a href="debug.html" class="active debug-link is-hidden" data-debug-link>Debug</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <main class="debug-page" id="debugPage">
+      <section class="card debug-header">
+        <div>
+          <h1>Debug Buffer</h1>
+          <p class="subtext">Inspect exam + summary API calls with full request/response payloads.</p>
+        </div>
+        <div class="debug-token">
+          <label for="debugTokenInput">Debug Token</label>
+          <div class="debug-token-row">
+            <input
+              id="debugTokenInput"
+              type="password"
+              placeholder="Enter debug token"
+              autocomplete="off"
+            />
+            <button class="secondary-btn" id="saveDebugTokenBtn" type="button">Save</button>
+          </div>
+          <p class="debug-error" id="debugError" role="alert"></p>
+        </div>
+      </section>
+
+      <section class="debug-layout">
+        <section class="card debug-list-panel">
+          <div class="card-top">
+            <div>
+              <h2>Recent Calls</h2>
+              <p class="subtext">Auto-refreshes every 2 seconds.</p>
+            </div>
+            <div class="debug-list-actions">
+              <button class="ghost-btn" id="pauseBtn" type="button">Pause</button>
+              <button class="ghost-btn" id="clearBtn" type="button">Clear</button>
+            </div>
+          </div>
+
+          <div class="debug-filters">
+            <div class="control">
+              <label for="operationFilter">Operation</label>
+              <select id="operationFilter">
+                <option value="all" selected>All</option>
+                <option value="exam_generate">exam_generate</option>
+                <option value="summary_generate">summary_generate</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="statusFilter">Status</label>
+              <input id="statusFilter" type="text" placeholder="Any" />
+            </div>
+            <div class="control">
+              <label for="idSearch">Search by ID</label>
+              <input id="idSearch" type="text" placeholder="e.g. call_123" />
+            </div>
+          </div>
+
+          <ul class="debug-list" id="debugList"></ul>
+          <p class="debug-empty" id="debugEmpty">No calls yet.</p>
+        </section>
+
+        <section class="card debug-detail-panel">
+          <div class="card-top">
+            <div>
+              <h2>Call Details</h2>
+              <p class="subtext">Select a call to inspect full JSON.</p>
+            </div>
+            <button class="secondary-btn" id="copyJsonBtn" type="button">Copy JSON</button>
+          </div>
+
+          <pre class="debug-json" id="debugJson"></pre>
+        </section>
+      </section>
+    </main>
+
+    <section class="card debug-disabled is-hidden" id="debugDisabled"></section>
+  </div>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <p>© 2026 StudySummarize — Debug</p>
+    </div>
+  </footer>
+
+  <script src="js/debug-api.js"></script>
+  <script src="js/debug-nav.js"></script>
+  <script src="js/debug.js"></script>
+</body>
+</html>

@@ -1,38 +1,51 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StudySummarize | AI Summary Maker</title>
+
+  <meta
+    name="description"
+    content="Turn long notes into smart summaries. Paste your study text, choose length and format, and get a clean summary you can study from."
+  />
+  <meta name="theme-color" content="#2563eb" />
+
+  <link rel="icon" href="assets/icons/favicon.svg" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/responsive.css" />
 </head>
 <body>
+  <!-- Skip link for keyboard users -->
+  <a class="skip-link" href="#mainContent">Skip to content</a>
+
   <!-- NAVBAR -->
-  <header class="navbar">
-    <div class="brand">
+  <header class="navbar" role="banner">
+    <div class="brand" aria-label="StudySummarize Home">
       <img src="assets/icons/logo.svg" alt="StudySummarize Logo" class="logo-img" />
       <span class="logo-text">StudySummarize</span>
     </div>
 
-    <nav class="nav">
-      <a href="index.html" class="active">Home</a>
+    <nav class="nav" aria-label="Primary navigation">
+      <a href="index.html" class="active" aria-current="page">Home</a>
       <a href="exam.html">Exam Maker</a>
       <a href="about.html">About</a>
+      <a href="debug.html" class="debug-link is-hidden" data-debug-link>Debug</a>
     </nav>
   </header>
 
   <!-- LEFT-ALIGNED PAGE WRAP -->
   <div class="wrap">
     <!-- HERO -->
-    <section class="hero">
+    <section class="hero" aria-labelledby="heroTitle">
       <div class="hero-content">
-        <h1>Turn Long Notes Into Smart Summaries</h1>
+        <h1 id="heroTitle">Turn Long Notes Into Smart Summaries</h1>
         <p>
           Paste your study text, choose length + format, and get a clean summary you can study from.
         </p>
 
-        <div class="hero-badges">
+        <div class="hero-badges" aria-label="Project highlights">
           <span class="chip">Desktop-first</span>
           <span class="chip">Student-friendly</span>
           <span class="chip">Frontend only</span>
@@ -40,30 +53,32 @@
       </div>
 
       <div class="hero-art" aria-hidden="true">
-        <img src="assets/images/hero-illustration.svg" alt="Study illustration" />
+        <img src="assets/images/hero-illustration.svg" alt="Study illustration" loading="lazy" />
       </div>
     </section>
 
     <!-- MAIN APP -->
-    <main class="app-container">
+    <main class="app-container" id="mainContent" role="main">
       <!-- INPUT CARD -->
-      <section class="card">
+      <section class="card" aria-labelledby="inputCardTitle">
         <div class="card-top">
           <div>
-            <h2>Input Text</h2>
+            <h2 id="inputCardTitle">Input Text</h2>
             <p class="subtext">Paste notes, an article, or any study content.</p>
           </div>
 
-          <div class="count-badge" id="countBadge">0 words • 0 chars</div>
+          <div class="count-badge" id="countBadge" aria-live="polite">0 words • 0 chars</div>
         </div>
 
+        <label for="inputText" class="sr-only">Input text</label>
         <textarea
           id="inputText"
           placeholder="Paste your notes here…"
-          aria-label="Input text"
+          aria-describedby="inputHint"
+          spellcheck="true"
         ></textarea>
 
-        <div class="controls">
+        <div class="controls" role="group" aria-label="Summary settings">
           <div class="control">
             <label for="lengthSelect">Summary length</label>
             <select id="lengthSelect">
@@ -83,33 +98,46 @@
           </div>
         </div>
 
-        <div class="input-actions">
-          <button class="primary-btn" id="summarizeBtn" type="button">Summarize</button>
-          <button class="ghost-btn" id="pasteBtn" type="button">Paste</button>
-          <button class="ghost-btn" id="clearBtn" type="button">Clear</button>
+        <div class="input-actions" role="group" aria-label="Input actions">
+          <button class="primary-btn" id="summarizeBtn" type="button">
+            Summarize
+          </button>
+          <button class="ghost-btn" id="pasteBtn" type="button">
+            Paste
+          </button>
+          <button class="ghost-btn" id="clearBtn" type="button">
+            Clear
+          </button>
         </div>
 
-        <p class="hint">
+        <p class="hint" id="inputHint">
           Tip: When you connect the API later, shorter inputs are usually faster and cheaper.
         </p>
       </section>
 
       <!-- OUTPUT CARD -->
-      <section class="card">
+      <section class="card" aria-labelledby="outputCardTitle">
         <div class="card-top">
           <div>
-            <h2>Summary Output</h2>
+            <h2 id="outputCardTitle">Summary Output</h2>
             <p class="subtext">Your result will appear here.</p>
           </div>
 
           <span class="status-pill" id="statusPill" role="status" aria-live="polite">Ready</span>
         </div>
 
-        <div class="output-box" id="outputBox">
+        <div
+          class="output-box"
+          id="outputBox"
+          role="region"
+          aria-live="polite"
+          aria-label="Summary output area"
+          tabindex="0"
+        >
           <p class="placeholder">Generate a summary to see it here.</p>
         </div>
 
-        <div class="output-actions">
+        <div class="output-actions" role="group" aria-label="Output actions">
           <button class="secondary-btn" id="copyBtn" type="button">
             <img src="assets/icons/copy.svg" class="btn-icon" alt="" />
             Copy
@@ -124,20 +152,15 @@
     </main>
   </div>
 
-  <footer class="footer">
+  <footer class="footer" role="contentinfo">
     <div class="wrap footer-inner">
       <p>© 2026 StudySummarize — Built for students.</p>
     </div>
   </footer>
 
   <script src="js/app.js"></script>
+  <script src="js/debug-api.js"></script>
+  <script src="js/debug-nav.js"></script>
   <script src="js/theme.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-

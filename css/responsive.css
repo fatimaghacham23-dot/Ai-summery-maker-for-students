@@ -1,7 +1,8 @@
+/* responsive.css */
 @media (max-width: 1100px){
   .wrap{
     margin-left: 18px;
-    padding-right: 18px;
+    padding: 0 18px;
   }
 }
 
@@ -21,27 +22,64 @@
   .exam-sidebar{
     position: static;
   }
+  .debug-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .debug-filters{
+    grid-template-columns: 1fr;
+  }
 
   .type-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .about-grid{
     grid-template-columns: 1fr;
   }
 }
 
+/* Improve navbar wrapping before phone width */
+@media (max-width: 700px){
+  .navbar{
+    min-height: unset;
+    padding: 12px 14px;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .brand{
+    min-width: unset;
+  }
+
+  .nav{
+    width: 100%;
+    gap: 8px;
+  }
+
+  .nav a{
+    padding: 10px 10px;
+  }
+}
+
 @media (max-width: 520px){
   .navbar{
-    padding: 0 14px;
+    padding: 12px 14px;
   }
 
   .wrap{
     margin-left: 14px;
-    padding-right: 14px;
+    padding: 0 14px;
   }
 
   .hero h1{
     font-size: 30px;
+  }
+
+  .hero-content,
+  .hero-art{
+    padding: 18px;
   }
 
   .controls{
@@ -55,7 +93,3 @@
     justify-content: center;
   }
 }
-
-
-
-

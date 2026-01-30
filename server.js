@@ -1,4 +1,7 @@
 require("dotenv").config();
+console.log("DEBUG_TOKEN =", JSON.stringify(process.env.DEBUG_TOKEN));
+console.log("ENABLE_DEBUG_ROUTES =", JSON.stringify(process.env.ENABLE_DEBUG_ROUTES));
+console.log("NODE_ENV =", JSON.stringify(process.env.NODE_ENV));
 
 const express = require("express");
 const cors = require("cors");
@@ -13,6 +16,7 @@ const {
 const healthRouter = require("./src/routes/health");
 const summarizeRouter = require("./src/routes/summarize");
 const examsRouter = require("./src/routes/exams");
+const { debugRouter, isDebugRoutesEnabled } = require("./src/debug/debugRoutes");
 
 // ⚠️ This should be an OpenAPI SPEC, not a provider.
 // If openaiProvider exports a spec, this is fine.
@@ -78,7 +82,9 @@ app.use(morgan("dev"));
 app.use("/health", healthRouter);
 app.use("/api", summarizeRouter);
 app.use("/api", examsRouter);
-
+if (isDebugRoutesEnabled()) {
+  app.use("/__debug", debugRouter);
+}
 /**
  * ============
  * SWAGGER / API
