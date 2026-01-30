@@ -196,14 +196,12 @@ const renderResults = (payload) => {
   const list = payload.results
     .map((result, index) => {
       const question = questionMap.get(result.questionId) || result;
-      const classification =
-        question.questionType === "trueFalse" || question.type === "trueFalse"
-          ? question.classification
-          : null;
-      const explanation =
-        question.questionType === "trueFalse" || question.type === "trueFalse"
-          ? question.explanation
-          : null;
+      const isTrueFalse =
+        question.questionType === "trueFalse" || question.type === "trueFalse";
+      const classification = isTrueFalse
+        ? question.classification || result.classification
+        : null;
+      const explanation = isTrueFalse ? question.explanation || result.explanation : null;
       return `
         <div class="result-item ${result.correct ? "correct" : "incorrect"}">
           <strong>Q${index + 1}</strong>

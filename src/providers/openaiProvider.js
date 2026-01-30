@@ -86,19 +86,70 @@ module.exports = {
 
     const prompt = [
       "You are an assistant that builds practice exams from study notes.",
-      "Return ONLY valid JSON with keys: title, questions.",
-      "Use a topic blueprint internally: extract topics from the entire notes, assign weights, then generate questions topic-by-topic for balanced coverage. Do not include the blueprint in output.",
+      "Return ONLY valid JSON with keys: title, blueprint, questions.",
+      "Blueprint should be an array of 4-8 topic labels extracted from the entire notes.",
+      "Generate questions topic-by-topic for balanced coverage of the blueprint.",
       "Question quality requirements:",
       "- Questions must be conceptual, analytical, and applied (not just definitions).",
-      "- Use Bloom-style depth: mostly Explain/Compare, Apply (scenario), Analyze/Reasoning.",
+      "- Use Bloom-style depth: mostly Explain/Compare (L2), Apply (L3), Analyze/Reason (L4).",
       "- Limit pure definition/term questions to at most 15-20% of total.",
       "- Cover ALL subjects/topics mentioned in the notes, not just the first paragraphs.",
       "- Avoid repetition: do not ask the same fact in different wording.",
+          "Schema requirements:",
+      "- Every question must include: type, topic, bloomLevel (L1-L4), prompt, explanation, points.",
+      "- Non-true/false questions must include a rationale in explanation.",
+      "- MCQ must include choices (4 options) and answerKey (A-D).",
+      "- Short answer must include answerKeyText array.",
+      "- Fill blank must include answerKeyBlank string.",
       "True/False requirements (mandatory schema):",
-      '- Each trueFalse question must include "classification": one of Definition | Concept | Fact | Application.',
-      "- Each trueFalse question must include a clear explanation stating the key principle and what would make the statement correct/incorrect.",
-      "Each question must include: type, prompt, choices (mcq only), answerKey, answerKeyBool, answerKeyText, answerKeyBlank, explanation, points.",
-      'Include "classification" for trueFalse questions.',
+      "- type must be trueFalse.",
+      '- Include "classification": one of Definition | Concept | Fact | Application.',
+      "- Include answerKeyBool (boolean).",
+      "- Include explanation with at least 2 sentences explaining why true/false.",
+      "Few-shot examples (format only, not from the notes):",
+      JSON.stringify(
+        {
+          title: "Example Exam",
+          blueprint: ["Topic A", "Topic B"],
+          questions: [
+            {
+              type: "mcq",
+              topic: "Topic A",
+              bloomLevel: "L3",
+              prompt:
+                "A student applies principle X to scenario Y. Which step best prevents the failure mode?",
+              choices: ["Option A", "Option B", "Option C", "Option D"],
+              answerKey: "B",
+              explanation:
+                "The scenario requires applying principle X to avoid the failure mode. Option B aligns with the correct mitigation.",
+              points: 1,
+            },
+            {
+              type: "shortAnswer",
+              topic: "Topic B",
+              bloomLevel: "L2",
+              prompt: "Compare approach A vs B for balancing trade-offs in this system.",
+              answerKeyText: ["trade-off", "efficiency", "risk"],
+              explanation:
+                "A strong response contrasts the approaches and references efficiency/risk trade-offs.",
+              points: 2,
+            },
+            {
+              type: "trueFalse",
+              topic: "Topic A",
+              bloomLevel: "L2",
+              prompt: "True or False: In scenario Z, applying X always increases output.",
+              classification: "Application",
+              answerKeyBool: false,
+              explanation:
+                "The claim ignores the constraints in scenario Z that limit output. It would only be true if those constraints were removed.",
+              points: 1,
+            },
+          ],
+        },
+        null,
+        2
+      ),
       `Difficulty: ${config.difficulty}`,
       `Question counts: ${JSON.stringify(config.types)}`,
       "Language: en",
@@ -155,6 +206,7 @@ module.exports = {
     return {
       title: parsed.title || title || "Generated Exam",
       questions: parsed.questions,
+      blueprint: parsed.blueprint,
     };
   },
 };

@@ -31,6 +31,32 @@ describe("Exam Maker API", () => {
     expect(response.body.config.difficulty).toBe("easy");
   });
 
+  test("true/false questions include classification and explanation", async () => {
+    const response = await request(app)
+      .post("/api/exams/generate")
+      .send({
+        text: baseText,
+        questionCount: 6,
+        types: { mcq: 2, trueFalse: 2, shortAnswer: 1, fillBlank: 1 },
+      });
+
+    expect(response.status).toBe(200);
+    const trueFalseQuestions = response.body.questions.filter(
+      (question) => question.type === "trueFalse"
+    );
+    expect(trueFalseQuestions.length).toBeGreaterThan(0);
+    trueFalseQuestions.forEach((question) => {
+      expect(["Definition", "Concept", "Fact", "Application"]).toContain(
+        question.classification
+      );
+      const sentences = question.explanation
+        .split(/[.!?]/)
+        .map((chunk) => chunk.trim())
+        .filter(Boolean);
+      expect(sentences.length).toBeGreaterThan(1);
+    });
+  });
+
   test("generate exam validation error on types sum", async () => {
     const response = await request(app)
       .post("/api/exams/generate")
@@ -107,6 +133,11 @@ describe("Exam Maker API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.score.percent).toBe(100);
+    const tfResult = response.body.results.find(
+      (result) => result.questionType === "trueFalse"
+    );
+    expect(tfResult.classification).toBeDefined();
+    expect(tfResult.explanation).toBeDefined();
   });
 
   test("export json and html", async () => {

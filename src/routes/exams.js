@@ -10,6 +10,8 @@ const {
   createExamRecord,
   gradeSubmission,
   renderExamHtml,
+  normalizeExamOutput,
+  validateExamQuality,
 } = require("../utils/exams");
 
 const router = express.Router();
@@ -80,17 +82,46 @@ router.post("/exams/generate", limiter, async (req, res, next) => {
     const payload = handleValidation(generateSchema, req.body || {});
     const config = buildExamConfig(payload);
     const provider = getProvider();
-    const generated = await provider.generateExam({
-      text: payload.text,
-      title: payload.title,
-      config,
-    });
+    const maxAttempts = 3;
+    let attempt = 0;
+    let normalized = null;
+    let lastIssues = [];
+    let generated = null; // ✅ FIX: declare outside loop so we can use it after
+
+    while (attempt < maxAttempts && !normalized) {
+      generated = await provider.generateExam({
+        text: payload.text,
+        title: payload.title,
+        config,
+      });
+
+      const examPayload = normalizeExamOutput(generated);
+      const quality = validateExamQuality(examPayload, config);
+
+      if (quality.passed) {
+        normalized = examPayload;
+        break;
+      }
+
+      lastIssues = quality.issues;
+      attempt += 1;
+    }
+
+    if (!normalized) {
+      throw new AppError(
+        "Exam generation failed quality checks.",
+        502,
+        "PROVIDER_ERROR",
+        { issues: lastIssues }
+      );
+    }
 
     const { exam, sourceTextHash } = createExamRecord({
-      title: generated.title,
-      questions: generated.questions,
+      title: generated?.title,
+      questions: generated?.questions,
       text: payload.text,
       config,
+      blueprint: normalized.blueprint,
     });
 
     const insert = db.prepare(
@@ -115,7 +146,9 @@ router.post("/exams/generate", limiter, async (req, res, next) => {
 router.get("/exams", limiter, (req, res, next) => {
   try {
     const rows = db
-      .prepare("SELECT id, title, configJson, createdAt FROM exams ORDER BY createdAt DESC")
+      .prepare(
+        "SELECT id, title, configJson, createdAt FROM exams ORDER BY createdAt DESC"
+      )
       .all();
     const list = rows.map((row) => {
       const config = JSON.parse(row.configJson);

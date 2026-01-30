@@ -20,6 +20,279 @@ const POINTS_BY_TYPE = {
   fillBlank: 1,
 };
 
+const ALLOWED_TF_CLASSIFICATIONS = ["Definition", "Concept", "Fact", "Application"];
+const BLOOM_LEVELS = ["L1", "L2", "L3", "L4"];
+
+const normalizeQuestionType = (type) => {
+  if (!type) {
+    return "";
+  }
+  const normalized = String(type).toLowerCase().replace(/[^a-z]/g, "");
+  if (normalized === "truefalse" || normalized === "truefalsequestion") {
+    return "trueFalse";
+  }
+  if (normalized === "fillblank" || normalized === "fillintheblank") {
+    return "fillBlank";
+  }
+  if (normalized === "shortanswer" || normalized === "shortresponse") {
+    return "shortAnswer";
+  }
+  if (normalized === "mcq" || normalized === "multiplechoice") {
+    return "mcq";
+  }
+  return type;
+};
+
+const normalizeBloomLevel = (level) => {
+  if (!level) {
+    return "";
+  }
+  const text = String(level).toLowerCase();
+  const match = text.match(/l[1-4]/);
+  if (match) {
+    return match[0].toUpperCase();
+  }
+  if (text.includes("remember") || text.includes("define")) {
+    return "L1";
+  }
+  if (text.includes("explain") || text.includes("compare") || text.includes("describe")) {
+    return "L2";
+  }
+  if (text.includes("apply") || text.includes("use") || text.includes("calculate")) {
+    return "L3";
+  }
+  if (text.includes("analy") || text.includes("evaluate") || text.includes("diagnose")) {
+    return "L4";
+  }
+  return "";
+};
+
+const inferBloomLevel = (prompt) => {
+  const text = String(prompt || "").toLowerCase();
+  if (
+    text.includes("analy") ||
+    text.includes("evaluate") ||
+    text.includes("diagnose") ||
+    text.includes("debug")
+  ) {
+    return "L4";
+  }
+  if (
+    text.includes("apply") ||
+    text.includes("calculate") ||
+    text.includes("solve") ||
+    text.includes("use the data")
+  ) {
+    return "L3";
+  }
+  if (text.includes("compare") || text.includes("contrast") || text.includes("explain")) {
+    return "L2";
+  }
+  return "L1";
+};
+
+const inferClassification = (prompt) => {
+  const text = String(prompt || "").toLowerCase();
+  if (
+    text.includes("scenario") ||
+    text.includes("case") ||
+    text.includes("given") ||
+    text.includes("in practice") ||
+    text.includes("situation")
+  ) {
+    return "Application";
+  }
+  if (
+    text.includes("is defined as") ||
+    text.includes("definition") ||
+    text.includes("refers to") ||
+    text.startsWith("define")
+  ) {
+    return "Definition";
+  }
+  if (
+    text.includes("relationship") ||
+    text.includes("because") ||
+    text.includes("leads to") ||
+    text.includes("results in") ||
+    text.includes("affects") ||
+    text.includes("depends on") ||
+    text.includes("correlat")
+  ) {
+    return "Concept";
+  }
+  return "Fact";
+};
+
+const normalizeExamOutput = (generated) => {
+  const rawQuestions = Array.isArray(generated?.questions) ? generated.questions : [];
+  const blueprintRaw = Array.isArray(generated?.blueprint)
+    ? generated.blueprint
+    : Array.isArray(generated?.topics)
+      ? generated.topics
+      : [];
+  const normalizedQuestions = rawQuestions.map((question, index) => {
+    const type = normalizeQuestionType(question.type || question.questionType);
+    const prompt =
+      question.prompt ||
+      question.statement ||
+      question.question ||
+      `Question ${index + 1}`;
+    const explanation = question.explanation || question.rationale || "";
+    const bloomLevel = normalizeBloomLevel(question.bloomLevel || question.bloom) ||
+      inferBloomLevel(prompt);
+    const topic = question.topic || question.topicLabel || "General";
+    const base = {
+      ...question,
+      type,
+      prompt,
+      explanation,
+      bloomLevel,
+      topic,
+    };
+    if (type === "trueFalse") {
+      const classification =
+        ALLOWED_TF_CLASSIFICATIONS.includes(question.classification)
+          ? question.classification
+          : inferClassification(prompt);
+      return {
+        ...base,
+        classification,
+        answerKeyBool: question.answerKeyBool ?? question.answerKey ?? question.answer ?? false,
+      };
+    }
+    return base;
+  });
+
+  const derivedBlueprint = blueprintRaw.length
+    ? blueprintRaw
+    : Array.from(new Set(normalizedQuestions.map((question) => question.topic)));
+
+  return {
+    title: generated?.title || "Generated Exam",
+    questions: normalizedQuestions,
+    blueprint: derivedBlueprint,
+  };
+};
+
+const tokenizePrompt = (prompt) =>
+  String(prompt || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+const jaccardSimilarity = (aTokens, bTokens) => {
+  const aSet = new Set(aTokens);
+  const bSet = new Set(bTokens);
+  if (!aSet.size || !bSet.size) {
+    return 0;
+  }
+  let intersection = 0;
+  aSet.forEach((token) => {
+    if (bSet.has(token)) {
+      intersection += 1;
+    }
+  });
+  const union = new Set([...aSet, ...bSet]).size;
+  return union === 0 ? 0 : intersection / union;
+};
+
+const validateExamQuality = (exam, config) => {
+  const issues = [];
+  const total = exam.questions.length;
+  if (!total) {
+    return { passed: false, issues: ["No questions returned."] };
+  }
+
+  const normalizedBlueprint = (exam.blueprint || [])
+    .map((topic) => String(topic).trim())
+    .filter(Boolean);
+  const normalizedQuestionTopics = exam.questions.map((question) =>
+    String(question.topic || "").trim().toLowerCase()
+  );
+  normalizedBlueprint.forEach((topic) => {
+    const covered = normalizedQuestionTopics.includes(topic.toLowerCase());
+    if (!covered) {
+      issues.push(`Missing coverage for topic "${topic}".`);
+    }
+  });
+
+  const depthCount = exam.questions.filter((question) =>
+    ["L2", "L3", "L4"].includes(question.bloomLevel)
+  ).length;
+  const depthRatio = depthCount / total;
+  if (depthRatio < 0.7) {
+    issues.push(`Bloom depth ratio too low (${Math.round(depthRatio * 100)}%).`);
+  }
+
+  const definitionOnlyCount = exam.questions.filter((question) => {
+    const text = String(question.prompt || "").toLowerCase();
+    return (
+      question.bloomLevel === "L1" ||
+      text.includes("define") ||
+      text.includes("definition") ||
+      text.includes("refers to") ||
+      text.includes("is defined as")
+    );
+  }).length;
+  const definitionRatio = definitionOnlyCount / total;
+  if (definitionRatio > 0.2) {
+    issues.push(
+      `Definition-only ratio too high (${Math.round(definitionRatio * 100)}%).`
+    );
+  }
+
+  const tokens = exam.questions.map((question) => tokenizePrompt(question.prompt));
+  const duplicates = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    for (let j = i + 1; j < tokens.length; j += 1) {
+      if (jaccardSimilarity(tokens[i], tokens[j]) >= 0.9) {
+        duplicates.push([i + 1, j + 1]);
+      }
+    }
+  }
+  if (duplicates.length) {
+    issues.push(`Found near-duplicate questions: ${duplicates.map((pair) => pair.join(" & ")).join(", ")}.`);
+  }
+
+  exam.questions.forEach((question, index) => {
+    if (!question.topic) {
+      issues.push(`Question ${index + 1} missing topic.`);
+    }
+    if (!BLOOM_LEVELS.includes(question.bloomLevel)) {
+      issues.push(`Question ${index + 1} missing Bloom level.`);
+    }
+    if (question.type === "trueFalse") {
+      if (!ALLOWED_TF_CLASSIFICATIONS.includes(question.classification)) {
+        issues.push(`Question ${index + 1} missing classification.`);
+      }
+      const sentences = String(question.explanation || "")
+        .split(/[.!?]/)
+        .map((chunk) => chunk.trim())
+        .filter(Boolean);
+      if (sentences.length < 2) {
+        issues.push(`Question ${index + 1} needs a longer explanation.`);
+      }
+    } else {
+      if (String(question.explanation || "").length < 20) {
+        issues.push(`Question ${index + 1} needs a stronger rationale.`);
+      }
+    }
+  });
+
+  return {
+    passed: issues.length === 0,
+    issues,
+    metrics: {
+      depthRatio,
+      definitionRatio,
+      total,
+      questionCount: config?.questionCount,
+    },
+  };
+};
+
 const buildExamConfig = ({ difficulty, questionCount, types }) => {
   const config = {
     difficulty: difficulty || DEFAULT_CONFIG.difficulty,
@@ -77,7 +350,7 @@ const buildExamConfig = ({ difficulty, questionCount, types }) => {
   return config;
 };
 
-const createExamRecord = ({ title, questions, text, config }) => {
+const createExamRecord = ({ title, questions, text, config, blueprint }) => {
   if (!questions || questions.length === 0) {
     throw new AppError("Provider returned no questions.", 502, "PROVIDER_ERROR");
   }
@@ -104,6 +377,7 @@ const createExamRecord = ({ title, questions, text, config }) => {
     title: title || "Untitled Exam",
     createdAt,
     config,
+    blueprint,
     questions: normalizedQuestions,
     totalPoints,
   };
@@ -185,6 +459,9 @@ const gradeSubmission = (exam, answers) => {
 
     return {
       questionId: question.id,
+      questionType: question.type,
+      classification: question.type === "trueFalse" ? question.classification : undefined,
+      explanation: question.type === "trueFalse" ? question.explanation : undefined,
       correct,
       earnedPoints,
       maxPoints: question.points,
@@ -249,10 +526,17 @@ const renderExamHtml = (exam, withAnswers = false) => {
                 .join("")}
             </ol>`
           : "";
-      return `
+      const classification =
+        question.type === "trueFalse"
+          ? `<p class="question-meta">Classification: ${escapeHtml(
+              question.classification
+            )}</p>`
+          : "";
+          return `
         <div class="question">
           <h3>Q${index + 1}. ${escapeHtml(question.prompt)}</h3>
           ${choices}
+          ${classification}
           <p class="explanation">${escapeHtml(question.explanation)}</p>
           ${renderAnswer(question)}
         </div>
@@ -272,6 +556,7 @@ const renderExamHtml = (exam, withAnswers = false) => {
           .meta { color: #64748b; margin-bottom: 24px; }
           .question { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
           .choices { padding-left: 20px; }
+          .question-meta { color: #475569; margin: 6px 0 0; }
           .explanation { color: #475569; }
           .answer { font-weight: bold; color: #2563eb; }
         </style>
@@ -291,4 +576,7 @@ module.exports = {
   gradeSubmission,
   renderExamHtml,
   POINTS_BY_TYPE,
+  normalizeExamOutput,
+  validateExamQuality,
+  ALLOWED_TF_CLASSIFICATIONS,
 };

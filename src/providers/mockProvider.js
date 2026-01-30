@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { createSummaryText, formatSummary } = require("./utils/summary");
+const { createSummaryText, formatSummary } = require("../utils/summary");
 const { POINTS_BY_TYPE } = require("../utils/exams");
 
 const normalizeWords = (text) => {
@@ -29,12 +29,13 @@ const generateExam = async ({ text, title, config }) => {
   const questions = [];
   const typeOrder = ["mcq", "trueFalse", "shortAnswer", "fillBlank"];
   let index = 0;
-
+  const blueprint = keywords.slice(0, Math.min(4, keywords.length, config.questionCount));
   typeOrder.forEach((type) => {
     const count = config.types[type];
     for (let i = 0; i < count; i += 1) {
       const id = hashToUuid(`${seed}-${type}-${index}`);
       const keyword = keywords[(index + i) % keywords.length];
+      const topic = blueprint[index % blueprint.length] || keyword;
       if (type === "mcq") {
         const choices = Array.from({ length: 4 }, (_, choiceIndex) => {
           const word = keywords[(index + choiceIndex) % keywords.length];
@@ -44,10 +45,12 @@ const generateExam = async ({ text, title, config }) => {
         questions.push({
           id,
           type,
-          prompt: `Which option best matches the term "${keyword}"?`,
+          topic,
+          bloomLevel: "L3",
+          prompt: `Which option best applies "${keyword}" to the study scenario?`,
           choices,
           answerKey,
-          explanation: `The study notes emphasize "${keyword}".`,
+          explanation: `The study notes emphasize applying "${keyword}" to real situations. The correct option aligns with that application.`,
           points: POINTS_BY_TYPE.mcq,
         });
       } else if (type === "trueFalse") {
@@ -55,9 +58,12 @@ const generateExam = async ({ text, title, config }) => {
         questions.push({
           id,
           type,
-          prompt: `True or False: "${keyword}" is a key idea in the notes.`,
+          topic,
+          bloomLevel: "L2",
+          prompt: `True or False: "${keyword}" drives a core relationship described in the notes.`,
+          classification: "Concept",
           answerKeyBool,
-          explanation: `This statement is ${answerKeyBool ? "true" : "false"} based on the notes.`,
+          explanation: `This statement is ${answerKeyBool ? "true" : "false"} based on the notes. The relationship described shows how "${keyword}" connects to other ideas.`,
           points: POINTS_BY_TYPE.trueFalse,
         });
       } else if (type === "shortAnswer") {
@@ -65,18 +71,22 @@ const generateExam = async ({ text, title, config }) => {
         questions.push({
           id,
           type,
-          prompt: `Briefly explain how "${keyword}" relates to the study material.`,
+          topic,
+          bloomLevel: "L2",
+          prompt: `Briefly compare how "${keyword}" influences two processes in the notes.`,
           answerKeyText: related,
-          explanation: `Include keywords like ${related.join(", ")}.`,
+          explanation: `A strong response compares processes using keywords like ${related.join(", ")}.`,
           points: POINTS_BY_TYPE.shortAnswer,
         });
       } else if (type === "fillBlank") {
         questions.push({
           id,
           type,
-          prompt: `Fill in the blank: The concept of ____ is tied to "${keyword}".`,
+          topic,
+          bloomLevel: "L2",
+          prompt: `Fill in the blank: The key process of ____ is central to "${keyword}".`,
           answerKeyBlank: keyword,
-          explanation: `The missing term is "${keyword}".`,
+          explanation: `The missing term is "${keyword}", which anchors the related process described.`,
           points: POINTS_BY_TYPE.fillBlank,
         });
       }
@@ -86,6 +96,7 @@ const generateExam = async ({ text, title, config }) => {
 
   return {
     title: titleText,
+    blueprint,
     questions,
   };
 };
