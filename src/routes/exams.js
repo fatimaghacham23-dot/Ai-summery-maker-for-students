@@ -7,12 +7,11 @@ const { getProvider } = require("../providers");
 const { db } = require("../db");
 const {
   buildExamConfig,
-  createExamRecord,
   gradeSubmission,
   renderExamHtml,
-  normalizeExamOutput,
-  validateExamQuality,
 } = require("../utils/exams");
+const { generateGroundedExam } = require("../utils/groundedExamPipeline");
+const crypto = require("crypto");
 
 const router = express.Router();
 
@@ -34,6 +33,7 @@ const generateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   questionCount: z.number().int().min(5).max(30).optional(),
+  seed: z.union([z.string().min(1).max(200), z.number()]).optional(),
   types: z
     .object({
       mcq: z.number().int().min(0),
@@ -81,48 +81,14 @@ router.post("/exams/generate", limiter, async (req, res, next) => {
   try {
     const payload = handleValidation(generateSchema, req.body || {});
     const config = buildExamConfig(payload);
-    const provider = getProvider();
-    const maxAttempts = 3;
-    let attempt = 0;
-    let normalized = null;
-    let lastIssues = [];
-    let generated = null; // ✅ FIX: declare outside loop so we can use it after
-
-    while (attempt < maxAttempts && !normalized) {
-      generated = await provider.generateExam({
-        text: payload.text,
-        title: payload.title,
-        config,
-      });
-
-      const examPayload = normalizeExamOutput(generated);
-      const quality = validateExamQuality(examPayload, config);
-
-      if (quality.passed) {
-        normalized = examPayload;
-        break;
-      }
-
-      lastIssues = quality.issues;
-      attempt += 1;
-    }
-
-    if (!normalized) {
-      throw new AppError(
-        "Exam generation failed quality checks.",
-        502,
-        "PROVIDER_ERROR",
-        { issues: lastIssues }
-      );
-    }
-
-    const { exam, sourceTextHash } = createExamRecord({
-      title: generated?.title,
-      questions: generated?.questions,
+    getProvider();
+    const exam = generateGroundedExam({
       text: payload.text,
+      title: payload.title,
       config,
-      blueprint: normalized.blueprint,
+      seed: payload.seed,
     });
+    const sourceTextHash = crypto.createHash("sha256").update(payload.text).digest("hex");
 
     const insert = db.prepare(
       `INSERT INTO exams (id, title, sourceTextHash, configJson, examJson, createdAt)

@@ -31,6 +31,12 @@ class DebugBuffer {
     this.entries = [];
     return count;
   }
+
+  clearWhere(predicate) {
+    const before = this.entries.length;
+    this.entries = this.entries.filter((entry) => !predicate(entry));
+    return before - this.entries.length;
+  }
 }
 
 const debugBuffer = new DebugBuffer(

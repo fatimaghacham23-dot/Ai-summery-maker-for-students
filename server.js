@@ -7,6 +7,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
+const path = require("path");
 
 const {
   errorHandler,
@@ -16,7 +17,9 @@ const {
 const healthRouter = require("./src/routes/health");
 const summarizeRouter = require("./src/routes/summarize");
 const examsRouter = require("./src/routes/exams");
-const { debugRouter, isDebugRoutesEnabled } = require("./src/debug/debugRoutes");
+const { debugRouter } = require("./src/debug/debugRoutes");
+const { debugSessionMiddleware } = require("./src/debug/debugSessionMiddleware");
+const { apiDebugRecorder } = require("./src/debug/apiDebugRecorder");
 
 // ⚠️ This should be an OpenAPI SPEC, not a provider.
 // If openaiProvider exports a spec, this is fine.
@@ -74,17 +77,25 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
+app.use(debugSessionMiddleware);
+
+app.use(express.static(path.join(__dirname)));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 /**
  * =======
  * ROUTES
  * =======
  */
 app.use("/health", healthRouter);
+app.use("/api", apiDebugRecorder);
 app.use("/api", summarizeRouter);
 app.use("/api", examsRouter);
-if (isDebugRoutesEnabled()) {
-  app.use("/__debug", debugRouter);
-}
+app.use("/__debug", debugRouter);
+
 /**
  * ============
  * SWAGGER / API

@@ -387,29 +387,71 @@ const createExamRecord = ({ title, questions, text, config, blueprint }) => {
 
 const normalizeAnswerText = (value) => String(value || "").trim().toLowerCase();
 
-const gradeShortAnswer = (answer, keywords, points) => {
-  // Short answer scoring: full points when answer includes >= 60% of keywords.
-  if (!keywords || keywords.length === 0) {
-    return { earned: 0, feedback: "No keywords configured." };
-  }
+const gradeShortAnswerRubric = (answer, answerKey, points) => {
   const normalized = normalizeAnswerText(answer);
   if (!normalized) {
-    return { earned: 0, feedback: "No answer submitted." };
-  }
-  const matched = keywords.filter((keyword) =>
-    normalized.includes(keyword.toLowerCase())
-  ).length;
-  const ratio = matched / keywords.length;
-  if (ratio >= 0.6) {
     return {
-      earned: points,
-      feedback: `Matched ${matched} of ${keywords.length} keywords.`,
+      earned: 0,
+      feedback: "No answer submitted.",
+      matchedRequired: [],
+      missingRequired: Array.isArray(answerKey?.requiredKeywords)
+        ? answerKey.requiredKeywords
+        : [],
+      matchedOptional: [],
     };
   }
+
+  const required = Array.isArray(answerKey?.requiredKeywords)
+    ? answerKey.requiredKeywords
+    : [];
+  const optional = Array.isArray(answerKey?.optionalKeywords)
+    ? answerKey.optionalKeywords
+    : [];
+
+  if (!required.length) {
+    return {
+      earned: 0,
+      feedback: "No keywords configured.",
+      matchedRequired: [],
+      missingRequired: [],
+      matchedOptional: [],
+    };
+  }
+
+  const matchedRequired = required.filter((keyword) =>
+    normalized.includes(String(keyword).toLowerCase())
+  );
+  const missingRequired = required.filter(
+    (keyword) => !matchedRequired.includes(keyword)
+  );
+  const matchedOptional = optional.filter((keyword) =>
+    normalized.includes(String(keyword).toLowerCase())
+  );
+
+  const ratio = matchedRequired.length / required.length;
   const earned = Number((points * ratio).toFixed(2));
+
   return {
     earned,
-    feedback: `Matched ${matched} of ${keywords.length} keywords.`,
+    feedback: `Matched ${matchedRequired.length} of ${required.length} required keywords.`,
+    matchedRequired,
+    missingRequired,
+    matchedOptional,
+  };
+};
+
+const getEvidence = (question) => {
+  const grounding = question?.grounding;
+  if (!grounding) {
+    return null;
+  }
+  return {
+    sourceSentenceIds: Array.isArray(grounding.sourceSentenceIds)
+      ? grounding.sourceSentenceIds
+      : [],
+    evidenceSnippets: Array.isArray(grounding.evidenceSnippets)
+      ? grounding.evidenceSnippets
+      : [],
   };
 };
 
@@ -426,6 +468,8 @@ const gradeSubmission = (exam, answers) => {
     let correct = false;
     let earnedPoints = 0;
     let feedback = "No answer submitted.";
+    const evidence = getEvidence(question);
+    let rubric = undefined;
 
     if (submitted) {
       if (question.type === "mcq") {
@@ -437,23 +481,43 @@ const gradeSubmission = (exam, answers) => {
           typeof submitted.value === "boolean"
             ? submitted.value
             : String(submitted.value).toLowerCase() === "true";
-        correct = value === question.answerKeyBool;
+        const expected =
+          typeof question.answerKeyBool === "boolean"
+            ? question.answerKeyBool
+            : typeof question.answerKey === "boolean"
+              ? question.answerKey
+              : false;
+        correct = value === expected;
         earnedPoints = correct ? question.points : 0;
         feedback = correct ? "Correct answer." : "Incorrect answer.";
       } else if (question.type === "fillBlank") {
         const normalized = normalizeAnswerText(submitted.value);
-        correct = normalized === normalizeAnswerText(question.answerKeyBlank);
+        const expected =
+          question.answerKeyBlank != null
+            ? question.answerKeyBlank
+            : question.answerKey;
+        correct = normalized === normalizeAnswerText(expected);
         earnedPoints = correct ? question.points : 0;
         feedback = correct ? "Correct fill-in." : "Incorrect fill-in.";
       } else if (question.type === "shortAnswer") {
-        const grading = gradeShortAnswer(
+        const answerKey =
+          question.answerKey && typeof question.answerKey === "object"
+            ? question.answerKey
+            : { requiredKeywords: question.answerKeyText || [], optionalKeywords: [] };
+        const grading = gradeShortAnswerRubric(
           submitted.value,
-          question.answerKeyText,
+          answerKey,
           question.points
         );
         earnedPoints = grading.earned;
         correct = earnedPoints === question.points;
         feedback = grading.feedback;
+        rubric = {
+          matchedRequired: grading.matchedRequired,
+          missingRequired: grading.missingRequired,
+          matchedOptional: grading.matchedOptional,
+          rubricPoints: Array.isArray(answerKey.rubricPoints) ? answerKey.rubricPoints : [],
+        };
       }
     }
 
@@ -466,6 +530,8 @@ const gradeSubmission = (exam, answers) => {
       earnedPoints,
       maxPoints: question.points,
       feedback,
+      evidence,
+      rubric,
     };
   });
 

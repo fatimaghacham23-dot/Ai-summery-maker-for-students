@@ -1,4 +1,5 @@
 const { debugBuffer } = require("./debugBuffer");
+const { getDebugContext } = require("./debugContext");
 
 // Centralized redaction + capture helper for external API calls.
 const REDACTED = "[REDACTED]";
@@ -95,6 +96,9 @@ const debugFetch = async (operationName, url, options = {}) => {
   const startedAt = Date.now();
   const timestamp = new Date().toISOString();
 
+  const ctx = getDebugContext();
+  const debugSessionId = ctx?.debugSessionId || null;
+
   const baseRecord = {
     timestamp,
     operationName,
@@ -108,6 +112,8 @@ const debugFetch = async (operationName, url, options = {}) => {
     responseBodyParsed: null,
     responseBodyPretty: null,
     latencyMs: null,
+    debugSessionId,
+    source: "external",
     error: null,
   };
 

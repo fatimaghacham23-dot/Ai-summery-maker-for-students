@@ -55,6 +55,7 @@
     }
 
     return fetch(url, {
+      credentials: "include",
       ...options,
       headers,
     });

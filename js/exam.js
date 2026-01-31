@@ -87,14 +87,28 @@ const renderExamMeta = () => {
     examMeta.innerHTML = `<p class="placeholder">Generate or select an exam to begin.</p>`;
     return;
   }
+  const blueprintText = (() => {
+    const bp = currentExam.blueprint;
+    if (Array.isArray(bp)) {
+      return bp.join(", ");
+    }
+    if (bp && Array.isArray(bp.concepts)) {
+      return bp.concepts
+        .map((c) => c && c.name)
+        .filter(Boolean)
+        .slice(0, 10)
+        .join(", ");
+    }
+    return "";
+  })();
   examMeta.innerHTML = `
     <div class="exam-meta-grid">
       <div>
         <strong>${currentExam.title}</strong>
         <p class="subtext">Created ${new Date(currentExam.createdAt).toLocaleString()}</p>
         ${
-          currentExam.blueprint?.length
-            ? `<p class="subtext">Blueprint: ${currentExam.blueprint.join(", ")}</p>`
+          blueprintText
+            ? `<p class="subtext">Blueprint: ${blueprintText}</p>`
             : ""
         }
         </div>
@@ -222,7 +236,7 @@ const renderResults = (payload) => {
 };
 
 const fetchJson = async (url, options) => {
-  const response = await fetch(url, options);
+  const response = await fetch(url, { credentials: "include", ...options });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = data?.error?.message || "Request failed";

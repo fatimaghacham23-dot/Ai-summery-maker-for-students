@@ -1,5 +1,6 @@
 const express = require("express");
 const crypto = require("crypto");
+
 const { debugBuffer } = require("./debugBuffer");
 
 const isDebugRoutesEnabled = () =>
@@ -24,6 +25,8 @@ const safeEqual = (a, b) => {
   if (aBuf.length !== bBuf.length) return false;
   return crypto.timingSafeEqual(aBuf, bBuf);
 };
+
+const getRequestSessionId = (req) => (req && req.debugSessionId ? String(req.debugSessionId) : null);
 
 // Require DEBUG_TOKEN via x-debug-token for every debug route.
 // In non-production, if DEBUG_TOKEN is not set, allow requests (convenient dev default).
@@ -177,9 +180,10 @@ const debugRouter = express.Router();
 // Protect everything under this router
 debugRouter.use(requireDebugToken);
 
-const listCallsSummary = () =>
+const listCallsSummary = (sessionId) =>
   debugBuffer
     .list()
+    .filter((entry) => !sessionId || entry.debugSessionId === sessionId)
     .map(({ id, timestamp, operationName, status, latencyMs }) => ({
       id,
       timestamp,
@@ -189,11 +193,13 @@ const listCallsSummary = () =>
     }));
 
 debugRouter.get("/", (req, res) => {
-  res.type("html").send(renderDebugPage(listCallsSummary()));
+  const sessionId = getRequestSessionId(req);
+  res.type("html").send(renderDebugPage(listCallsSummary(sessionId)));
 });
 
 debugRouter.get("/api-calls", (req, res) => {
-  res.json(listCallsSummary());
+  const sessionId = getRequestSessionId(req);
+  res.json(listCallsSummary(sessionId));
 });
 
 debugRouter.get("/api-calls/:id", (req, res) => {
@@ -202,8 +208,9 @@ debugRouter.get("/api-calls/:id", (req, res) => {
     return res.status(400).json({ error: "Invalid call id." });
   }
 
+  const sessionId = getRequestSessionId(req);
   const record = debugBuffer.getById(id);
-  if (!record) {
+  if (!record || (sessionId && record.debugSessionId !== sessionId)) {
     return res.status(404).json({ error: "Call not found." });
   }
 
@@ -211,7 +218,10 @@ debugRouter.get("/api-calls/:id", (req, res) => {
 });
 
 debugRouter.delete("/api-calls", (req, res) => {
-  const count = debugBuffer.clear();
+  const sessionId = getRequestSessionId(req);
+  const count = sessionId
+    ? debugBuffer.clearWhere((entry) => entry.debugSessionId === sessionId)
+    : debugBuffer.clear();
   res.json({ cleared: count });
 });
 

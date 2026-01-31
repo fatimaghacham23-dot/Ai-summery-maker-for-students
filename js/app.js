@@ -128,6 +128,7 @@ async function runSummarize() {
   try {
     const res = await fetch(API_ENDPOINT, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
