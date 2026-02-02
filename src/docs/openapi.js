@@ -67,6 +67,63 @@ const openapiSpec = {
               },
             },
           },
+          422: {
+            description: "Exam generation failed to meet requested quotas",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    code: { type: "string", example: "EXAM_GENERATION_FAILED" },
+                    missing: { type: "object", additionalProperties: { type: "integer" } },
+                    reason: { type: "string", example: "validation-too-strict" },
+                    debug: {
+                      type: "object",
+                      properties: {
+                        subjectCategory: { type: "string", example: "math" },
+                        attemptsByType: {
+                          type: "object",
+                          additionalProperties: { type: "integer" },
+                        },
+                        lastErrorsByType: {
+                          type: "object",
+                          additionalProperties: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                reason: { type: "string" },
+                                count: { type: "integer" },
+                              },
+                            },
+                          },
+                        },
+                        exampleFailedCandidates: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              templateId: { type: ["string", "null"] },
+                              templateFamily: { type: ["string", "null"] },
+                              prompt: { type: "string" },
+                              choices: { type: "array", items: { type: "string" } },
+                              answerKey: { type: "string" },
+                              issues: { type: "array", items: { type: "string" } },
+                            },
+                          },
+                        },
+                        templateFailures: {
+                          type: "object",
+                          additionalProperties: { type: "integer" },
+                        },
+                      },
+                    },
+                  },
+                  required: ["code", "missing", "reason"],
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -181,6 +238,29 @@ const openapiSpec = {
         },
       },
     },
+    "/api/knowledge/sources": {
+      get: {
+        summary: "List knowledge base sources",
+        responses: {
+          200: {
+            description: "Knowledge sources list",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    sources: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/KnowledgeSource" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -198,6 +278,7 @@ const openapiSpec = {
               fillBlank: { type: "integer" },
             },
           },
+          strictTypes: { type: "boolean", example: true },
           language: { type: "string", example: "en" },
         },
       },
@@ -218,23 +299,46 @@ const openapiSpec = {
           },
           explanation: { type: "string" },
           points: { type: "number" },
+          meta: {
+            type: "object",
+            properties: {
+              templateId: { type: "string" },
+              templateFamily: { type: "string" },
+              regeneratedFrom: { type: ["string", "null"] },
+              subjectCategory: { type: "string", example: "science" },
+            },
+          },
         },
       },
       Exam: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          id: { type: "integer" },
           title: { type: "string" },
           createdAt: { type: "string" },
           config: { $ref: "#/components/schemas/ExamConfig" },
           questions: { type: "array", items: { $ref: "#/components/schemas/ExamQuestion" } },
           totalPoints: { type: "number" },
+          meta: {
+            type: "object",
+            properties: {
+              seed: { type: "string" },
+              subjectCategory: { type: "string", example: "mixed" },
+            },
+          },
+        },
+      },
+      KnowledgeSource: {
+        type: "object",
+        properties: {
+          source: { type: "string", example: "OpenStax" },
+          license: { type: "string", example: "CC-BY-4.0" },
         },
       },
       ExamListItem: {
         type: "object",
         properties: {
-          id: { type: "string" },
+          id: { type: "integer" },
           title: { type: "string" },
           createdAt: { type: "string" },
           difficulty: { type: "string" },
@@ -248,6 +352,7 @@ const openapiSpec = {
           title: { type: "string" },
           difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
           questionCount: { type: "integer", minimum: 5, maximum: 30 },
+          seed: { type: "string" },
           types: {
             type: "object",
             properties: {
@@ -257,13 +362,21 @@ const openapiSpec = {
               fillBlank: { type: "integer" },
             },
           },
+          strictTypes: { type: "boolean", example: true },
         },
         required: ["text"],
+        example: {
+          text: "Paste study notes here...",
+          difficulty: "medium",
+          questionCount: 10,
+          types: { mcq: 4, trueFalse: 2, shortAnswer: 2, fillBlank: 2 },
+          strictTypes: true,
+        },
       },
       ExamSubmissionRequest: {
         type: "object",
         properties: {
-          examId: { type: "string" },
+          examId: { type: "integer" },
           answers: {
             type: "array",
             items: {
@@ -281,7 +394,7 @@ const openapiSpec = {
         type: "object",
         properties: {
           attemptId: { type: "string" },
-          examId: { type: "string" },
+          examId: { type: "integer" },
           score: {
             type: "object",
             properties: {

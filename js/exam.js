@@ -4,6 +4,7 @@ const examText = document.getElementById("examText");
 const examCountBadge = document.getElementById("examCountBadge");
 const difficultySelect = document.getElementById("difficultySelect");
 const questionCountInput = document.getElementById("questionCount");
+const strictTypesToggle = document.getElementById("strictTypesToggle");
 const mcqCountInput = document.getElementById("mcqCount");
 const tfCountInput = document.getElementById("tfCount");
 const shortCountInput = document.getElementById("shortCount");
@@ -239,15 +240,49 @@ const fetchJson = async (url, options) => {
   const response = await fetch(url, { credentials: "include", ...options });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = data?.error?.message || "Request failed";
-    throw new Error(message);
+    const message = data?.error?.message || data?.reason || "Request failed";
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
   return data;
 };
 
+const formatMissingCounts = (missing) =>
+  Object.entries(missing || {})
+    .map(([type, count]) => `${type}: ${count}`)
+    .join(", ");
+
+const renderGenerationFailure = (payload) => {
+  const missingText = formatMissingCounts(payload?.missing);
+  examMeta.innerHTML = `
+    <div class="results-summary">
+      <h3>Couldn't generate full exam</h3>
+      <p class="subtext">${
+        missingText
+          ? `Missing: ${missingText}`
+          : "We couldn't meet the requested question mix."
+      }</p>
+      <div class="exam-actions">
+        <button class="secondary-btn" id="retryGenerateBtn" type="button">Try again</button>
+      </div>
+      <p class="subtext">Tip: reduce difficulty or request fewer questions.</p>
+    </div>
+  `;
+  examForm.innerHTML = "";
+  currentExam = null;
+  exportJsonBtn.disabled = true;
+  exportHtmlBtn.disabled = true;
+  const retryBtn = document.getElementById("retryGenerateBtn");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", handleGenerateExam);
+  }
+};
+
 const loadExams = async () => {
   try {
-    const data = await fetchJson(`${API_BASE}/api/exams`);
+    const data = await fetchJson(`${API_BASE}/api/exams`, { cache: "no-store" });
     examsList.innerHTML = data
       .map(
         (exam) => `
@@ -308,14 +343,18 @@ const handleGenerateExam = async () => {
   setLoadingState(true);
   setExamStatus("Generating...");
   try {
-    const exam = await fetchJson(`${API_BASE}/api/exams/generate`, {
-      method: "POST",
+    const generateUrl = `${API_BASE}/api/exams/generate`;
+    const method = "POST";
+    console.log(`[exam] generate fetch -> ${method} ${generateUrl}`);
+    const exam = await fetchJson(generateUrl, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
         difficulty: difficultySelect.value,
         questionCount,
         types,
+        strictTypes: strictTypesToggle ? strictTypesToggle.checked : true,
       }),
     });
     currentExam = exam;
@@ -327,9 +366,15 @@ const handleGenerateExam = async () => {
     await loadExams();
     await loadAttempts(exam.id);
   } catch (err) {
-    console.error(err);
-    setExamStatus("Error");
-    showToast(err.message);
+    if (err.status === 422) {
+      renderGenerationFailure(err.data || {});
+      setExamStatus("Incomplete");
+      showToast("Couldn't generate a full exam");
+    } else {
+      console.error(err);
+      setExamStatus("Error");
+      showToast(err.message);
+    }
   } finally {
     setLoadingState(false);
   }
@@ -453,3 +498,9 @@ updateTypeStatus();
 setLoadingState(false);
 setExamStatus("Idle");
 loadExams();
+
+
+
+
+
+

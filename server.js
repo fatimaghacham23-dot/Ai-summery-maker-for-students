@@ -17,14 +17,13 @@ const {
 const healthRouter = require("./src/routes/health");
 const summarizeRouter = require("./src/routes/summarize");
 const examsRouter = require("./src/routes/exams");
+const knowledgeRouter = require("./src/routes/knowledge");
 const { debugRouter } = require("./src/debug/debugRoutes");
 const { debugSessionMiddleware } = require("./src/debug/debugSessionMiddleware");
 const { apiDebugRecorder } = require("./src/debug/apiDebugRecorder");
 
-// ⚠️ This should be an OpenAPI SPEC, not a provider.
-// If openaiProvider exports a spec, this is fine.
-// Otherwise, later you may want a separate openapi.js file.
-const openapiSpec = require("./src/providers/openaiProvider");
+// OpenAPI spec source of truth.
+const openapiSpec = require("./src/docs/openapi");
 
 const app = express();
 
@@ -94,6 +93,7 @@ app.use("/health", healthRouter);
 app.use("/api", apiDebugRecorder);
 app.use("/api", summarizeRouter);
 app.use("/api", examsRouter);
+app.use("/api", knowledgeRouter);
 app.use("/__debug", debugRouter);
 
 /**
@@ -125,3 +125,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+

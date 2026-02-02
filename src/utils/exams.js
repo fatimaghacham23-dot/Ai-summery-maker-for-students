@@ -293,12 +293,16 @@ const validateExamQuality = (exam, config) => {
   };
 };
 
-const buildExamConfig = ({ difficulty, questionCount, types }) => {
+const buildExamConfig = ({ difficulty, questionCount, types, strictTypes }) => {
   const config = {
     difficulty: difficulty || DEFAULT_CONFIG.difficulty,
     questionCount: questionCount || DEFAULT_CONFIG.questionCount,
     types: types ? { ...types } : { ...DEFAULT_CONFIG.types },
     language: "en",
+    strictTypes:
+      typeof strictTypes === "boolean"
+        ? strictTypes
+        : process.env.NODE_ENV === "production",
   };
 
   if (!questionCount && types) {

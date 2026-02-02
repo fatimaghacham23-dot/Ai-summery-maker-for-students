@@ -17,6 +17,18 @@ const notFoundHandler = (req, res) => {
 };
 
 const errorHandler = (err, req, res, next) => {
+  if (err.code === "EXAM_GENERATION_FAILED") {
+    const payload = {
+      code: err.code,
+      missing: err.missing || {},
+      reason: err.reason || "validation-too-strict",
+      debug: err.debug || null,
+    };
+    console.warn("EXAM_GENERATION_FAILED", JSON.stringify(payload, null, 2));
+    res.status(err.statusCode || 422).json(payload);
+    return;
+  }
+
   const statusCode = err.statusCode || 500;
   const code = err.code || "INTERNAL_ERROR";
 

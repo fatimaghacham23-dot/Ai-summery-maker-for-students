@@ -14,23 +14,44 @@
     return window.APP_CONFIG || window.__APP_CONFIG__ || {};
   }
 
+  function isLocalhost(hostname) {
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  }
+
+  function getNodeEnv() {
+    const config = getAppConfig();
+    const fromConfig =
+      config.NODE_ENV ||
+      config.nodeEnv ||
+      getMetaContent(CONFIG_META_KEYS.nodeEnv);
+
+    if (fromConfig) {
+      return String(fromConfig).toLowerCase();
+    }
+
+    return isLocalhost(window.location.hostname) ? "development" : "production";
+  }
+
   function getApiBaseUrl() {
     const config = getAppConfig();
-    return (
+    const baseUrl =
       config.BASE_API_URL ||
       config.baseApiUrl ||
       getMetaContent(CONFIG_META_KEYS.apiBaseUrl) ||
-      ""
-    );
+      "";
+
+    if (!baseUrl && isLocalhost(window.location.hostname)) {
+      if (window.location.port && window.location.port !== "3000") {
+        return "http://localhost:3000";
+      }
+    }
+
+    return baseUrl;
   }
 
   function isDebugRouteEnabled() {
     const config = getAppConfig();
-    const nodeEnv =
-      config.NODE_ENV ||
-      config.nodeEnv ||
-      getMetaContent(CONFIG_META_KEYS.nodeEnv) ||
-      "development";
+    const nodeEnv = getNodeEnv();
     const enableDebugRoutes =
       String(
         config.ENABLE_DEBUG_ROUTES ||
@@ -38,7 +59,12 @@
           getMetaContent(CONFIG_META_KEYS.enableDebugRoutes) ||
           ""
       ).toLowerCase() === "true";
-    return nodeEnv !== "production" || enableDebugRoutes;
+
+    if (nodeEnv === "production") {
+      return false;
+    }
+
+    return enableDebugRoutes || nodeEnv !== "production";
   }
 
   function getDebugToken() {

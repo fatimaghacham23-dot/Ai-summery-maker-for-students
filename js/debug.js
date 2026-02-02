@@ -4,6 +4,7 @@ const debugError = document.getElementById("debugError");
 const debugList = document.getElementById("debugList");
 const debugEmpty = document.getElementById("debugEmpty");
 const debugJson = document.getElementById("debugJson");
+const debugOutput = document.getElementById("debugOutput");
 const copyJsonBtn = document.getElementById("copyJsonBtn");
 const operationFilter = document.getElementById("operationFilter");
 const statusFilter = document.getElementById("statusFilter");
@@ -21,6 +22,8 @@ let selectedId = null;
 let pollHandle = null;
 let isPaused = false;
 let isLoadingCalls = false;
+let debugUnavailable = false;
+let hasLoggedUnavailable = false;
 
 function setError(message) {
   if (!debugError) {
@@ -37,6 +40,33 @@ function setError(message) {
 
 function setDetailsPlaceholder(message) {
   debugJson.textContent = message;
+}
+
+function setOutputPlaceholder(message) {
+  if (debugOutput) {
+    debugOutput.textContent = message;
+  }
+}
+
+function disableDebug(reason) {
+  debugUnavailable = true;
+  if (pollHandle) {
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  if (debugPage) {
+    debugPage.classList.add("is-hidden");
+  }
+  if (debugDisabled) {
+    debugDisabled.classList.remove("is-hidden");
+    debugDisabled.textContent = reason;
+  }
+
+  if (!hasLoggedUnavailable) {
+    console.warn(reason);
+    hasLoggedUnavailable = true;
+  }
 }
 
 function formatTimestamp(value) {
@@ -57,14 +87,19 @@ function getStatusText(value) {
   return String(value);
 }
 
+function getOperationName(item) {
+  return item?.operation || item?.operationName || item?.op || "unknown";
+}
+
 function applyFilters(items) {
   const operationValue = operationFilter.value;
   const statusValue = statusFilter.value.trim().toLowerCase();
   const idValue = idSearch.value.trim().toLowerCase();
 
   return items.filter((item) => {
+    const operationName = getOperationName(item);
     const matchesOperation =
-      operationValue === "all" || item.operation === operationValue;
+      operationValue === "all" || operationName === operationValue;
     const statusText = getStatusText(item.status).toLowerCase();
     const matchesStatus = !statusValue || statusText.includes(statusValue);
     const idText = String(item.id || "").toLowerCase();
@@ -100,7 +135,7 @@ function renderCalls() {
 
     const opSpan = document.createElement("span");
     opSpan.className = "debug-item-op";
-    opSpan.textContent = call.operation || "unknown";
+    opSpan.textContent = getOperationName(call);
 
     title.appendChild(idSpan);
     title.appendChild(opSpan);
@@ -137,6 +172,61 @@ function renderCalls() {
   });
 }
 
+function extractExamOutputText(record) {
+  if (!record) {
+    return "";
+  }
+
+  const parsed = record.responseBodyParsed;
+  const choiceContent = parsed?.choices?.[0]?.message?.content;
+  if (typeof choiceContent === "string" && choiceContent.trim()) {
+    return choiceContent.trim();
+  }
+
+  const choiceText = parsed?.choices?.[0]?.text;
+  if (typeof choiceText === "string" && choiceText.trim()) {
+    return choiceText.trim();
+  }
+
+  if (typeof parsed === "string" && parsed.trim()) {
+    return parsed.trim();
+  }
+
+  if (typeof record.responseBodyRaw === "string" && record.responseBodyRaw.trim()) {
+    try {
+      const rawParsed = JSON.parse(record.responseBodyRaw);
+      const rawContent = rawParsed?.choices?.[0]?.message?.content;
+      if (typeof rawContent === "string" && rawContent.trim()) {
+        return rawContent.trim();
+      }
+    } catch {
+      return record.responseBodyRaw.trim();
+    }
+  }
+
+  return "";
+}
+
+function renderExamOutput(record) {
+  if (!debugOutput) {
+    return;
+  }
+
+  const operationName = getOperationName(record);
+  if (operationName !== "exam_generate") {
+    setOutputPlaceholder("Select an exam_generate call to view exam output.");
+    return;
+  }
+
+  const outputText = extractExamOutputText(record);
+  if (!outputText) {
+    setOutputPlaceholder("No exam output found for this call.");
+    return;
+  }
+
+  debugOutput.textContent = outputText;
+}
+
 function updatePauseButton() {
   pauseBtn.textContent = isPaused ? "Resume" : "Pause";
 }
@@ -153,13 +243,19 @@ function saveToken() {
 }
 
 async function fetchCalls() {
-  if (isPaused || isLoadingCalls) {
+  if (debugUnavailable || isPaused || isLoadingCalls) {
     return;
   }
   isLoadingCalls = true;
   try {
     const res = await window.debugApiFetch("/__debug/api-calls");
     if (!res.ok) {
+      if (res.status === 404) {
+        disableDebug(
+          "Debug endpoint not available. Run the backend with debug routes enabled."
+        );
+        return;
+      }
       if (res.status === 401 || res.status === 403) {
         setError("Missing or invalid debug token. Please save a valid token.");
       } else {
@@ -177,6 +273,7 @@ async function fetchCalls() {
     if (selectedId && !calls.find((call) => call.id === selectedId)) {
       selectedId = null;
       setDetailsPlaceholder("Select a call to view details.");
+      setOutputPlaceholder("Select an exam_generate call to view exam output.");
     }
   } catch (err) {
     console.error(err);
@@ -193,6 +290,7 @@ async function selectCall(id) {
   selectedId = id;
   renderCalls();
   setDetailsPlaceholder("Loading call details...");
+  setOutputPlaceholder("Loading exam output...");
 
   try {
     const res = await window.debugApiFetch(`/__debug/api-calls/${id}`);
@@ -209,9 +307,11 @@ async function selectCall(id) {
     setError("");
     const data = await res.json();
     debugJson.textContent = JSON.stringify(data, null, 2);
+    renderExamOutput(data);
   } catch (err) {
     console.error(err);
     setDetailsPlaceholder("Unable to load details.");
+    setOutputPlaceholder("Unable to load exam output.");
   }
 }
 
@@ -229,6 +329,7 @@ async function clearCalls() {
     renderCalls();
     selectedId = null;
     setDetailsPlaceholder("Select a call to view details.");
+    setOutputPlaceholder("Select an exam_generate call to view exam output.");
   } catch (err) {
     console.error(err);
     setError("Unable to clear calls.");
@@ -262,6 +363,7 @@ function init() {
   }
 
   setDetailsPlaceholder("Select a call to view details.");
+  setOutputPlaceholder("Select an exam_generate call to view exam output.");
   updatePauseButton();
 
   fetchCalls();

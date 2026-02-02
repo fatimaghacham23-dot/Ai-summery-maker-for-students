@@ -15,7 +15,7 @@ const crypto = require("crypto");
 
 const router = express.Router();
 
-const limiter = rateLimit({
+const limiterOptions = {
   windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -26,7 +26,12 @@ const limiter = rateLimit({
       message: "Too many requests, please try again later.",
     },
   },
-});
+};
+
+const limiter =
+  process.env.NODE_ENV === "test"
+    ? (req, res, next) => next()
+    : rateLimit(limiterOptions);
 
 const generateSchema = z.object({
   text: z.string().min(50).max(20000),
@@ -34,6 +39,7 @@ const generateSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   questionCount: z.number().int().min(5).max(30).optional(),
   seed: z.union([z.string().min(1).max(200), z.number()]).optional(),
+  strictTypes: z.boolean().optional(),
   types: z
     .object({
       mcq: z.number().int().min(0),
@@ -45,7 +51,7 @@ const generateSchema = z.object({
 });
 
 const submissionSchema = z.object({
-  examId: z.string().uuid(),
+  examId: z.coerce.number().int(),
   answers: z.array(
     z.object({
       questionId: z.string().uuid(),
@@ -80,7 +86,12 @@ const handleValidation = (schema, data) => {
 router.post("/exams/generate", limiter, async (req, res, next) => {
   try {
     const payload = handleValidation(generateSchema, req.body || {});
-    const config = buildExamConfig(payload);
+    const strictTypes =
+      typeof payload.strictTypes === "undefined"
+        ? process.env.NODE_ENV === "production"
+        : Boolean(payload.strictTypes);
+    const config = buildExamConfig({ ...payload, strictTypes });
+    config.strictTypes = strictTypes;
     getProvider();
     const exam = generateGroundedExam({
       text: payload.text,
@@ -91,16 +102,23 @@ router.post("/exams/generate", limiter, async (req, res, next) => {
     const sourceTextHash = crypto.createHash("sha256").update(payload.text).digest("hex");
 
     const insert = db.prepare(
-      `INSERT INTO exams (id, title, sourceTextHash, configJson, examJson, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO exams (title, sourceTextHash, configJson, examJson, createdAt)
+       VALUES (?, ?, ?, ?, ?)`
     );
-    insert.run(
-      exam.id,
+    const placeholderExam = { ...exam, id: null };
+    const info = insert.run(
       exam.title,
       sourceTextHash,
       JSON.stringify(exam.config),
-      JSON.stringify(exam),
+      JSON.stringify(placeholderExam),
       exam.createdAt
+    );
+    const examId = Number(info.lastInsertRowid);
+    exam.id = examId;
+    exam.config = { ...(exam.config || {}), strictTypes };
+    db.prepare("UPDATE exams SET examJson = ? WHERE id = ?").run(
+      JSON.stringify(exam),
+      examId
     );
 
     res.json(exam);
@@ -134,13 +152,19 @@ router.get("/exams", limiter, (req, res, next) => {
 
 router.get("/exams/:id", limiter, (req, res, next) => {
   try {
+    const examId = Number(req.params.id);
+    if (!Number.isInteger(examId)) {
+      throw new AppError("Exam ID must be an integer.", 400, "VALIDATION_ERROR");
+    }
     const row = db
       .prepare("SELECT examJson FROM exams WHERE id = ?")
-      .get(req.params.id);
+      .get(examId);
     if (!row) {
       throw new AppError("Exam not found.", 404, "NOT_FOUND");
     }
-    res.json(JSON.parse(row.examJson));
+    const exam = JSON.parse(row.examJson);
+    exam.id = examId;
+    res.json(exam);
   } catch (error) {
     next(error);
   }
@@ -149,16 +173,21 @@ router.get("/exams/:id", limiter, (req, res, next) => {
 router.post("/exams/:id/submit", limiter, (req, res, next) => {
   try {
     const payload = handleValidation(submissionSchema, req.body || {});
-    if (payload.examId !== req.params.id) {
+    const examId = Number(req.params.id);
+    if (!Number.isInteger(examId)) {
+      throw new AppError("Exam ID must be an integer.", 400, "VALIDATION_ERROR");
+    }
+    if (payload.examId !== examId) {
       throw new AppError("Exam ID mismatch.", 400, "VALIDATION_ERROR");
     }
     const examRow = db
       .prepare("SELECT examJson FROM exams WHERE id = ?")
-      .get(req.params.id);
+      .get(examId);
     if (!examRow) {
       throw new AppError("Exam not found.", 404, "NOT_FOUND");
     }
     const exam = JSON.parse(examRow.examJson);
+    exam.id = examId;
     const grading = gradeSubmission(exam, payload.answers);
 
     const attemptInsert = db.prepare(
@@ -167,7 +196,7 @@ router.post("/exams/:id/submit", limiter, (req, res, next) => {
     );
     attemptInsert.run(
       grading.attemptId,
-      exam.id,
+      examId,
       JSON.stringify(payload.answers),
       JSON.stringify({ score: grading.score, results: grading.results }),
       grading.createdAt
@@ -175,7 +204,7 @@ router.post("/exams/:id/submit", limiter, (req, res, next) => {
 
     res.json({
       attemptId: grading.attemptId,
-      examId: exam.id,
+      examId,
       score: grading.score,
       results: grading.results,
     });
@@ -186,11 +215,15 @@ router.post("/exams/:id/submit", limiter, (req, res, next) => {
 
 router.get("/exams/:id/attempts", limiter, (req, res, next) => {
   try {
+    const examId = Number(req.params.id);
+    if (!Number.isInteger(examId)) {
+      throw new AppError("Exam ID must be an integer.", 400, "VALIDATION_ERROR");
+    }
     const rows = db
       .prepare(
         "SELECT id, scoreJson, createdAt FROM attempts WHERE examId = ? ORDER BY createdAt DESC"
       )
-      .all(req.params.id);
+      .all(examId);
     const list = rows.map((row) => {
       const scorePayload = JSON.parse(row.scoreJson);
       return {
@@ -232,13 +265,18 @@ router.get("/attempts/:attemptId", limiter, (req, res, next) => {
 router.get("/exams/:id/export", limiter, (req, res, next) => {
   try {
     const query = handleValidation(exportSchema, req.query || {});
+    const examId = Number(req.params.id);
+    if (!Number.isInteger(examId)) {
+      throw new AppError("Exam ID must be an integer.", 400, "VALIDATION_ERROR");
+    }
     const row = db
       .prepare("SELECT examJson FROM exams WHERE id = ?")
-      .get(req.params.id);
+      .get(examId);
     if (!row) {
       throw new AppError("Exam not found.", 404, "NOT_FOUND");
     }
     const exam = JSON.parse(row.examJson);
+    exam.id = examId;
     if (query.format === "json") {
       return res.json(exam);
     }
