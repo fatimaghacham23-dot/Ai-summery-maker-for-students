@@ -1,166 +1,296 @@
-<!-- index.html -->
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudySummarize | AI Summary Maker</title>
-
+  <title>StudySummarize | AI Study Companion</title>
   <meta
     name="description"
-    content="Turn long notes into smart summaries. Paste your study text, choose length and format, and get a clean summary you can study from."
+    content="Turn long notes into actionable summaries and practice exams with clarity and grounded sources."
   />
-  <meta name="theme-color" content="#2563eb" />
-
+  <meta name="theme-color" content="#e0edff" />
+  <meta name="app-version" content="1.0.0" />
+  <meta property="og:title" content="StudySummarize | AI Summary & Exam Maker" />
+  <meta
+    property="og:description"
+    content="Paste notes, summarize quickly, generate exams, track attempts, and surface grounding sources in a modern workspace."
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://studysummarize.example" />
+  <meta property="og:image" content="assets/images/hero-illustration.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="StudySummarize | Study smarter" />
+  <meta
+    name="twitter:description"
+    content="Create summaries and exams without context switching—desktop-ready and grounded in your own sources."
+  />
   <link rel="icon" href="assets/icons/favicon.svg" />
-  <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/pages.css" />
 </head>
-<body>
-  <!-- Skip link for keyboard users -->
-  <a class="skip-link" href="#mainContent">Skip to content</a>
 
-  <!-- NAVBAR -->
-  <header class="navbar" role="banner">
-    <div class="brand" aria-label="StudySummarize Home">
-      <img src="assets/icons/logo.svg" alt="StudySummarize Logo" class="logo-img" />
-      <span class="logo-text">StudySummarize</span>
+<body>
+  <a class="skip-link" href="#mainContent">Skip to content</a>
+  <div class="app-shell">
+    <header class="app-header" role="banner">
+      <div class="brand">
+        <img src="assets/icons/logo.svg" alt="StudySummarize logo" />
+        <div>
+          <h1>StudySummarize</h1>
+          <p>AI Summary & Exam Maker</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span id="apiStatusIndicator" class="status-chip">Checking API...</span>
+        <div class="breadcrumbs" id="viewBreadcrumb">Summary Maker</div>
+      </div>
+    </header>
+
+    <div class="shell-body">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <span class="badge">Workflows</span>
+        <nav>
+          <button type="button" class="nav-link active" data-nav-target="summary">Summary Maker</button>
+          <button type="button" class="nav-link" data-nav-target="exam">Exam Maker</button>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="about.html">About</a>
+          <a href="docs" target="_blank" rel="noreferrer">API Docs</a>
+          <a href="debug.html" class="debug-link is-hidden" data-debug-link>Debug</a>
+        </div>
+      </aside>
+
+      <main class="content-area" id="mainContent">
+        <section class="page-view summary-view active" data-view="summary">
+          <div class="page-heading">
+            <div>
+              <p class="breadcrumbs">Workspace / Summary Maker</p>
+              <h2>Summary Maker</h2>
+              <p class="helper-text">Transform long notes into concise, structured summaries.</p>
+            </div>
+            <div class="chip">AI-first</div>
+          </div>
+          <div class="summary-layout">
+            <section class="card summary-form-card">
+              <form id="summaryForm" class="summary-form" novalidate>
+                <div class="summary-meta">
+                  <span id="summaryCounter">0 words - 0 chars</span>
+                  <span id="summaryStatus" class="status-chip online">Ready</span>
+                </div>
+                <div class="form-field">
+                  <label for="summaryText">Study text</label>
+                  <textarea
+                    id="summaryText"
+                    name="summaryText"
+                    placeholder="Paste notes or an article..."
+                    aria-describedby="summaryHint"
+                  ></textarea>
+                  <p class="helper-text" id="summaryHint">We trim extra whitespace but keep your formatting intact.</p>
+                </div>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="summaryLength">Length</label>
+                    <select id="summaryLength">
+                      <option value="short">Short</option>
+                      <option value="medium" selected>Medium</option>
+                      <option value="detailed">Detailed</option>
+                      <option value="unlimited">Unlimited</option>
+                    </select>
+                    <p class="helper-text">Short = 3-4 key points. Unlimited = keep every nuance.</p>
+                  </div>
+                  <div class="form-field">
+                    <label for="summaryFormat">Format</label>
+                    <select id="summaryFormat">
+                      <option value="paragraph">Paragraph</option>
+                      <option value="bullets">Bullet points</option>
+                    </select>
+                    <p class="helper-text">Paragraph keeps flow; bullets make structure easy to skim.</p>
+                  </div>
+                </div>
+                <div class="summary-actions">
+                  <button type="button" class="btn primary" data-action="summarize">Generate summary</button>
+                  <button type="button" class="btn secondary" data-action="paste">Paste</button>
+                  <button type="button" class="btn ghost" data-action="clear">Clear</button>
+                </div>
+                <p id="summaryValidation" class="helper-text" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+            <section class="card summary-preview" aria-live="polite" id="summaryPreview" role="region">
+              <div class="preview-toolbar">
+                <div>
+                  <p class="helper-text">Output</p>
+                  <p class="status-note" id="previewStatus">Waiting for generation</p>
+                </div>
+                <div>
+                  <button type="button" class="btn secondary" data-action="copy">Copy</button>
+                  <button type="button" class="btn ghost" data-action="download">Download</button>
+                </div>
+              </div>
+              <div class="preview-content" id="summaryOutput">
+                <p class="placeholder">Start with a summary request to see results here.</p>
+              </div>
+              <div id="summaryError" class="summary-error" hidden></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page-view exam-view" data-view="exam">
+          <div class="page-heading">
+            <div>
+              <p class="breadcrumbs">Workspace / Exam Maker</p>
+              <h2>Exam Maker</h2>
+              <p class="helper-text">Generate practice exams, submit answers, and review grounded sources.</p>
+            </div>
+            <div class="chip">Grounded</div>
+          </div>
+          <div class="exam-flow">
+            <article class="step-card">
+              <div class="step-number">Step 1</div>
+              <h3>Study material</h3>
+              <div class="form-field">
+                <label for="examText">Text source</label>
+                <textarea
+                  id="examText"
+                  placeholder="Paste textbook excerpts, slides, or notes..."
+                  aria-label="Study text"
+                ></textarea>
+              </div>
+              <p class="helper-text">Longer inputs may take slightly longer but stay in context.</p>
+            </article>
+            <article class="step-card">
+              <div class="step-number">Step 2</div>
+              <h3>Configuration</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="difficultySelect">Difficulty</label>
+                  <select id="difficultySelect">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="questionCount">Question count (5-30)</label>
+                  <input id="questionCount" type="number" min="5" max="30" value="10" />
+                </div>
+                <div class="form-field">
+                  <label class="inline-secondary" for="strictTypesToggle">Strict type counts</label>
+                  <input id="strictTypesToggle" type="checkbox" checked />
+                </div>
+              </div>
+              <div class="type-grid">
+                <div class="form-field">
+                  <label for="mcqCount">MCQ</label>
+                  <input id="mcqCount" type="number" min="0" value="4" />
+                </div>
+                <div class="form-field">
+                  <label for="tfCount">True / False</label>
+                  <input id="tfCount" type="number" min="0" value="2" />
+                </div>
+                <div class="form-field">
+                  <label for="shortCount">Short answer</label>
+                  <input id="shortCount" type="number" min="0" value="2" />
+                </div>
+                <div class="form-field">
+                  <label for="fillCount">Fill in blank</label>
+                  <input id="fillCount" type="number" min="0" value="2" />
+                </div>
+              </div>
+              <p class="helper-text" id="typeStatus">Types total: 10 / 10</p>
+            </article>
+            <article class="step-card">
+              <div class="step-number">Step 3</div>
+              <h3>Generate & export</h3>
+              <div class="summary-actions">
+                <button type="button" class="btn primary" data-action="generate-exam">Generate exam</button>
+                <button type="button" class="btn ghost" data-action="clear-exam">Clear</button>
+              </div>
+              <div class="summary-actions">
+                <button type="button" class="btn secondary" data-action="submit-exam">Submit answers</button>
+                <button type="button" class="btn ghost" data-action="export-json">Export JSON</button>
+                <button type="button" class="btn ghost" data-action="export-html">Export HTML</button>
+              </div>
+              <p class="helper-text" id="examStatusText">Status: Idle</p>
+            </article>
+          </div>
+          <div class="exam-columns">
+            <div class="exam-panel">
+              <section class="card exam-overview">
+                <div class="card-top">
+                  <h3>Exam overview</h3>
+                </div>
+                <div id="examMeta">
+                  <p class="placeholder">Generate an exam to unlock the questions panel.</p>
+                </div>
+                <div id="examQuestions" aria-live="polite"></div>
+              </section>
+              <section class="card results-card">
+                <div class="card-top">
+                  <h3>Attempts & feedback</h3>
+                </div>
+                <div id="resultsPanel">
+                  <p class="placeholder">Attempt an exam to see scored feedback.</p>
+                </div>
+              </section>
+            </div>
+            <div class="exam-sidebar">
+              <section class="card history-card">
+                <h3>Exam history</h3>
+                <ul id="examsList" class="history-list" aria-live="polite"></ul>
+              </section>
+              <section class="card history-card">
+                <div class="history-controls">
+                  <div class="form-field">
+                    <label for="attemptFilter">Filter attempts</label>
+                    <input id="attemptFilter" type="search" placeholder="Search by exam title" />
+                  </div>
+                  <div class="form-field">
+                    <label for="attemptSort">Sort</label>
+                    <select id="attemptSort">
+                      <option value="recent">Most recent</option>
+                      <option value="top-score">Highest score</option>
+                    </select>
+                  </div>
+                </div>
+                <table class="attempts-table">
+                  <thead>
+                    <tr>
+                      <th>Exam</th>
+                      <th>Score</th>
+                      <th>Date</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attemptTableBody"></tbody>
+                </table>
+                <p class="helper-text" id="attemptPlaceholder">No attempts yet.</p>
+              </section>
+              <section class="card sources-panel">
+                <h3>Grounding sources</h3>
+                <div id="knowledgeState" class="helper-text">Loading sources...</div>
+                <ul id="sourcesList"></ul>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
 
-    <nav class="nav" aria-label="Primary navigation">
-      <a href="index.html" class="active" aria-current="page">Home</a>
-      <a href="exam.html">Exam Maker</a>
-      <a href="about.html">About</a>
-      <a href="debug.html" class="debug-link is-hidden" data-debug-link>Debug</a>
-    </nav>
-  </header>
-
-  <!-- LEFT-ALIGNED PAGE WRAP -->
-  <div class="wrap">
-    <!-- HERO -->
-    <section class="hero" aria-labelledby="heroTitle">
-      <div class="hero-content">
-        <h1 id="heroTitle">Turn Long Notes Into Smart Summaries</h1>
-        <p>
-          Paste your study text, choose length + format, and get a clean summary you can study from.
-        </p>
-
-        <div class="hero-badges" aria-label="Project highlights">
-          <span class="chip">Desktop-first</span>
-          <span class="chip">Student-friendly</span>
-          <span class="chip">Frontend only</span>
-        </div>
+    <footer class="footer">
+      <div class="footer-grid">
+        <span id="footerVersion">Version loading...</span>
+        <span>© 2026 StudySummarize</span>
+        <span>Express + SQLite</span>
       </div>
-
-      <div class="hero-art" aria-hidden="true">
-        <img src="assets/images/hero-illustration.svg" alt="Study illustration" loading="lazy" />
-      </div>
-    </section>
-
-    <!-- MAIN APP -->
-    <main class="app-container" id="mainContent" role="main">
-      <!-- INPUT CARD -->
-      <section class="card" aria-labelledby="inputCardTitle">
-        <div class="card-top">
-          <div>
-            <h2 id="inputCardTitle">Input Text</h2>
-            <p class="subtext">Paste notes, an article, or any study content.</p>
-          </div>
-
-          <div class="count-badge" id="countBadge" aria-live="polite">0 words • 0 chars</div>
-        </div>
-
-        <label for="inputText" class="sr-only">Input text</label>
-        <textarea
-          id="inputText"
-          placeholder="Paste your notes here…"
-          aria-describedby="inputHint"
-          spellcheck="true"
-        ></textarea>
-
-        <div class="controls" role="group" aria-label="Summary settings">
-          <div class="control">
-            <label for="lengthSelect">Summary length</label>
-            <select id="lengthSelect">
-              <option value="short">Short</option>
-              <option value="medium" selected>Medium</option>
-              <option value="detailed">Detailed</option>
-              <option value="unlimited">Unlimited</option>
-            </select>
-          </div>
-
-          <div class="control">
-            <label for="formatSelect">Output format</label>
-            <select id="formatSelect">
-              <option value="paragraph" selected>Paragraph</option>
-              <option value="bullets">Bullet points</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="input-actions" role="group" aria-label="Input actions">
-          <button class="primary-btn" id="summarizeBtn" type="button">
-            Summarize
-          </button>
-          <button class="ghost-btn" id="pasteBtn" type="button">
-            Paste
-          </button>
-          <button class="ghost-btn" id="clearBtn" type="button">
-            Clear
-          </button>
-        </div>
-
-        <p class="hint" id="inputHint">
-          Tip: When you connect the API later, shorter inputs are usually faster and cheaper.
-        </p>
-      </section>
-
-      <!-- OUTPUT CARD -->
-      <section class="card" aria-labelledby="outputCardTitle">
-        <div class="card-top">
-          <div>
-            <h2 id="outputCardTitle">Summary Output</h2>
-            <p class="subtext">Your result will appear here.</p>
-          </div>
-
-          <span class="status-pill" id="statusPill" role="status" aria-live="polite">Ready</span>
-        </div>
-
-        <div
-          class="output-box"
-          id="outputBox"
-          role="region"
-          aria-live="polite"
-          aria-label="Summary output area"
-          tabindex="0"
-        >
-          <p class="placeholder">Generate a summary to see it here.</p>
-        </div>
-
-        <div class="output-actions" role="group" aria-label="Output actions">
-          <button class="secondary-btn" id="copyBtn" type="button">
-            <img src="assets/icons/copy.svg" class="btn-icon" alt="" />
-            Copy
-          </button>
-          <button class="ghost-btn" id="downloadBtn" type="button">Download</button>
-        </div>
-
-        <p class="hint">
-          Privacy note: don’t paste personal passwords or sensitive private data.
-        </p>
-      </section>
-    </main>
+    </footer>
   </div>
 
-  <footer class="footer" role="contentinfo">
-    <div class="wrap footer-inner">
-      <p>© 2026 StudySummarize — Built for students.</p>
-    </div>
-  </footer>
-
-  <script src="js/app.js"></script>
+  <div class="toast-wrapper" id="toastPortal" aria-live="polite"></div>
   <script src="js/debug-api.js"></script>
   <script src="js/debug-nav.js"></script>
-  <script src="js/theme.js"></script>
+  <script type="module" src="assets/js/router.js"></script>
 </body>
+
 </html>

@@ -1,0 +1,120 @@
+:root {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --color-slate-950: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
+  --color-white: #ffffff;
+  --color-blue: #2563eb;
+  --color-blue-strong: #1d4ed8;
+  --color-green: #16a34a;
+  --color-amber: #f59e0b;
+  --color-red: #dc2626;
+  --color-muted: #64748b;
+  --shadow-soft: 0 20px 45px rgba(15, 23, 42, 0.25);
+  --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.12);
+  --radius-base: 16px;
+  --radius-pill: 999px;
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 40px;
+  --content-width: 1200px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 40%), #f5f7fb;
+  color: var(--color-slate-900);
+  min-height: 100vh;
+}
+
+img,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -40px;
+  padding: 0.75rem 1rem;
+  background: var(--color-slate-900);
+  color: var(--color-white);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: top 0.2s ease;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.toast-wrapper {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 200;
+}
+
+.loading-skeleton {
+  background: repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.08) 0,
+      rgba(255, 255, 255, 0.08) 15px,
+      rgba(37, 99, 235, 0.08) 15px,
+      rgba(37, 99, 235, 0.08) 30px
+    )
+    var(--color-slate-800);
+  border-radius: inherit;
+  min-height: 1rem;
+  animation: pulse 1.5s linear infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 60px 60px;
+  }
+}
